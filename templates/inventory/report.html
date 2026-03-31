@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}统计报表{% endblock %}
+{% block page_title %}统计报表{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+{% endif %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-clipboard-data"></i> 项目采购分析</h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{% url 'report_project_cost' %}">
+                        <div class="mb-3">
+                            <label class="form-label">选择项目</label>
+                            <select class="form-select" name="project_id" required>
+                                <option value="">请选择项目</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.code }} - {{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">开始日期</label>
+                            <input type="date" class="form-control" name="date_from">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">结束日期</label>
+                            <input type="date" class="form-control" name="date_to">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">查看采购分析</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-white">
+                    <h6 class="mb-0"><i class="bi bi-truck"></i> 供应商采购分析</h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{% url 'report_supplier_cost' %}">
+                        <div class="mb-3">
+                            <label class="form-label">选择供应商</label>
+                            <select class="form-select" name="supplier_id" required>
+                                <option value="">请选择供应商</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.code }} - {{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">开始日期</label>
+                            <input type="date" class="form-control" name="date_from">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">结束日期</label>
+                            <input type="date" class="form-control" name="date_to">
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">查看采购分析</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-calendar-range"></i> 月度统计</h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{% url 'report_monthly' %}">
+                        <div class="mb-3">
+                            <label class="form-label">开始日期</label>
+                            <input type="date" class="form-control" name="date_from">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">结束日期</label>
+                            <input type="date" class="form-control" name="date_to">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">查看月度统计</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

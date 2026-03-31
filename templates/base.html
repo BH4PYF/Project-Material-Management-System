@@ -1,0 +1,207 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}{{ company_name|default:"材料管理系统" }}{% endblock %}</title>
+    <!-- Bootstrap CSS（本地文件） -->
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- Bootstrap Icons（本地文件） -->
+    <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/mobile-optimization.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <!-- 侧边栏 -->
+        <div class="sidebar bg-dark text-white" id="sidebar">
+            <div class="sidebar-header p-3 border-bottom border-secondary">
+                <h5 class="mb-0"><i class="bi bi-building"></i> 材料管理系统</h5>
+            </div>
+            <nav class="nav flex-column p-2">
+                {% if request.user.profile.is_supplier %}
+                <!-- 供应商菜单：仅发货管理 -->
+                <a class="nav-link sidebar-link {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'delivery_list' %}">
+                    <i class="bi bi-truck"></i> 发货管理
+                </a>
+                {% else %}
+                <!-- 非供应商菜单（管理员、物资部、材料员） -->
+                <a class="nav-link sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+                    <i class="bi bi-speedometer2"></i> 材料管理系统
+                </a>
+                {% if request.user.profile.is_admin %}
+                <div class="nav-item">
+                    <a class="nav-link sidebar-link" data-bs-toggle="collapse" href="#archiveMenu" role="button" aria-expanded="false">
+                        <i class="bi bi-archive"></i> 档案管理 <i class="bi bi-chevron-down float-end small"></i>
+                    </a>
+                    <div class="collapse {% if 'project' in request.resolver_match.url_name or 'material' in request.resolver_match.url_name or 'supplier' in request.resolver_match.url_name %}show{% endif %}" id="archiveMenu">
+                        <a class="nav-link sidebar-link ps-4 {% if 'project' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'project_list' %}">
+                            <i class="bi bi-folder"></i> 项目档案
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'material' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'material_list' %}">
+                            <i class="bi bi-box-seam"></i> 材料档案
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'supplier' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'supplier_list' %}">
+                            <i class="bi bi-truck"></i> 供应商档案
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                <hr class="border-secondary my-1">
+                <a class="nav-link sidebar-link {% if 'inbound' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'inbound_list' %}">
+                    <i class="bi bi-box-arrow-in-down"></i> 入库管理
+                </a>
+                <a class="nav-link sidebar-link {% if 'purchase_plan' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'purchase_plan_list' %}">
+                    <i class="bi bi-cart-plus"></i> 采购计划
+                </a>
+                <a class="nav-link sidebar-link {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'delivery_list' %}">
+                    <i class="bi bi-truck"></i> 发货管理
+                </a>
+                <a class="nav-link sidebar-link {% if 'quick_receive' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'quick_receive' %}">
+                    <i class="bi bi-qr-code-scan"></i> 快速收货
+                </a>
+                <a class="nav-link sidebar-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'report_page' %}">
+                    <i class="bi bi-file-earmark-bar-graph"></i> 统计报表
+                </a>
+                <a class="nav-link sidebar-link {% if 'chart' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'chart_page' %}">
+                    <i class="bi bi-graph-up"></i> 图表分析
+                </a>
+                {% if request.user.profile.is_admin %}
+                <hr class="border-secondary my-1">
+                <a class="nav-link sidebar-link {% if 'log' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'log_list' %}">
+                    <i class="bi bi-journal-text"></i> 操作日志
+                </a>
+                <a class="nav-link sidebar-link {% if 'user' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'user_list' %}">
+                    <i class="bi bi-people"></i> 用户管理
+                </a>
+                <a class="nav-link sidebar-link {% if 'setting' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'settings_page' %}">
+                    <i class="bi bi-gear"></i> 系统设置
+                </a>
+                {% endif %}
+                {% endif %}
+            </nav>
+        </div>
+
+        <!-- 主内容 -->
+        <div class="main-content flex-grow-1">
+            <!-- 移动端菜单切换按钮 -->
+            <button class="btn btn-sm btn-outline-secondary mobile-menu-toggle d-md-none" id="mobileMenuToggle" style="display: none;">
+                <i class="bi bi-list"></i>
+            </button>
+            
+            <!-- 遮罩层 -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
+            
+            <!-- 顶部导航栏 -->
+            <nav class="navbar navbar-expand navbar-light bg-white shadow-sm px-4">
+                <button class="btn btn-sm btn-outline-secondary me-3 d-none d-md-block" id="sidebarToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                <span class="navbar-text">{{ company_name|default:"系统首页" }}</span>
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <a href="{% url 'profile_page' %}" class="d-flex align-items-center bg-light rounded-pill px-3 py-1 text-decoration-none text-dark" title="个人设置">
+                        <div class="avatar-circle bg-primary text-white me-2" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                            {{ request.user.first_name|default:request.user.username|first|upper }}
+                        </div>
+                        <span class="small fw-medium">
+                            {{ request.user.first_name|default:request.user.username }}
+                            <span class="text-muted">| {{ request.user.profile.get_role_display }}</span>
+                        </span>
+                    </a>
+                    <form method="post" action="{% url 'logout' %}" style="display:inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </button>
+                    </form>
+                </div>
+            </nav>
+
+            <!-- 消息提示 -->
+            {% if messages %}
+            <div class="px-3 pt-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- 页面内容 -->
+            <div class="p-3">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用删除确认模态框 -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white py-2">
+                    <h6 class="modal-title"><i class="bi bi-exclamation-triangle"></i> 确认删除</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="mb-1">确定要删除以下内容吗？</p>
+                    <p class="fw-bold text-danger" id="deleteItemName"></p>
+                    <p class="text-muted small mb-0">此操作不可恢复</p>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-sm btn-danger" id="deleteConfirmBtn">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用消息提示模态框 -->
+    <div class="modal fade" id="msgModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header py-2" id="msgModalHeader">
+                    <h6 class="modal-title" id="msgModalTitle"><i class="bi bi-exclamation-circle"></i> 提示</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="mb-0" id="msgModalBody"></p>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用确认模态框 -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header py-2 bg-primary text-white">
+                    <h6 class="modal-title" id="confirmModalTitle"><i class="bi bi-question-circle"></i> 确认操作</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="mb-0" id="confirmModalBody"></p>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="confirmModalBtn">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS（本地文件） -->
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/table-resizer.js' %}"></script>
+    <script src="{% static 'js/mobile-sidebar.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

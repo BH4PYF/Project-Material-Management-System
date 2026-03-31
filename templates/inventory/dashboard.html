@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}{{ company_name|default:"系统首页" }}{% endblock %}
+{% block page_title %}{{ company_name|default:"系统首页" }}{% endblock %}
+{% block extra_css %}
+<style>
+/* 加大字体 */
+body { font-size: 16px; }
+.card-header h6, .page-header h5 { font-size: 1.2rem; }
+.scrollable-list { max-height: 300px; overflow-y: auto; }
+.scrollable-list::-webkit-scrollbar { width: 6px; }
+.scrollable-list::-webkit-scrollbar-track { background: #f1f1f1; }
+.scrollable-list::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+/* 今日入库记录表格样式 */
+.recent-inbounds-table tbody tr { height: 45px; }
+/* 可点击的行 */
+.clickable-row { cursor: pointer; }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 项目列表点击跳转
+    document.querySelectorAll('.project-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var projectId = this.getAttribute('data-project-id');
+            window.location.href = '/inbound/?project=' + projectId;
+        });
+    });
+    
+    // 材料列表点击跳转
+    document.querySelectorAll('.material-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var materialId = this.getAttribute('data-material-id');
+            window.location.href = '/inbound/?material=' + materialId;
+        });
+    });
+    
+    // 供应商列表点击跳转
+    document.querySelectorAll('.supplier-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var supplierId = this.getAttribute('data-supplier-id');
+            window.location.href = '/inbound/?supplier=' + supplierId;
+        });
+    });
+});
+</script>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <!-- 项目列表 -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-folder text-primary"></i> 项目列表</h6>
+                <a href="{% url 'project_list' %}" class="btn btn-sm btn-outline-primary">管理</a>
+            </div>
+            <div class="card-body p-0 scrollable-list">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="sticky-top bg-light"><tr><th>编号</th><th>名称</th><th>操作</th></tr></thead>
+                    <tbody>
+                    {% for p in projects %}
+                    <tr class="clickable-row project-row" data-project-id="{{ p.id }}">
+                        <td class="small">{{ p.code }}</td>
+                        <td class="small">{{ p.name }}</td>
+                        <td><i class="bi bi-box-arrow-in-down text-success"></i></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">暂无项目</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- 材料列表 -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-box-seam text-success"></i> 材料列表</h6>
+                <a href="{% url 'material_list' %}" class="btn btn-sm btn-outline-success">管理</a>
+            </div>
+            <div class="card-body p-0 scrollable-list">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="sticky-top bg-light"><tr><th>编号</th><th>名称</th><th>操作</th></tr></thead>
+                    <tbody>
+                    {% for m in materials %}
+                    <tr class="clickable-row material-row" data-material-id="{{ m.id }}">
+                        <td class="small">{{ m.code }}</td>
+                        <td class="small">{{ m.name }}</td>
+                        <td><i class="bi bi-box-arrow-in-down text-success"></i></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">暂无材料</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- 供应商列表 -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-truck text-info"></i> 供应商列表</h6>
+                <a href="{% url 'supplier_list' %}" class="btn btn-sm btn-outline-info">管理</a>
+            </div>
+            <div class="card-body p-0 scrollable-list">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="sticky-top bg-light"><tr><th>编号</th><th>名称</th><th>操作</th></tr></thead>
+                    <tbody>
+                    {% for s in suppliers %}
+                    <tr class="clickable-row supplier-row" data-supplier-id="{{ s.id }}">
+                        <td class="small">{{ s.code }}</td>
+                        <td class="small">{{ s.name }}</td>
+                        <td><i class="bi bi-box-arrow-in-down text-success"></i></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">暂无供应商</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 今日入库 -->
+<div class="row g-3 mt-2">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-calendar-check text-success"></i> 今日入库记录 ({{ today }})</h6>
+                <a href="{% url 'inbound_list' %}" class="btn btn-sm btn-outline-success">查看全部</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 recent-inbounds-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>入库单号</th>
+                            <th>日期</th>
+                            <th>项目</th>
+                            <th>项目地址</th>
+                            <th>材料</th>
+                            <th>规格</th>
+                            <th class="text-end">数量</th>
+                            <th class="text-end">单价</th>
+                            <th class="text-end">总金额</th>
+                            <th>供应商</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for r in recent_inbounds %}
+                    <tr class="clickable-row project-row" data-project-id="{{ r.project.id }}">
+                        <td class="small"><code>{{ r.no }}</code></td>
+                        <td class="small">{{ r.date }}</td>
+                        <td class="small">{{ r.project.name }}</td>
+                        <td class="small text-muted">{{ r.location|default:r.project.location|default:'-' }}</td>
+                        <td class="small">{{ r.material.name }}</td>
+                        <td class="small text-muted">{{ r.material.spec|default:'-' }}</td>
+                        <td class="small text-end">{{ r.quantity|floatformat:2 }} {{ r.material.unit }}</td>
+                        <td class="small text-end">{{ r.unit_price|floatformat:2 }}</td>
+                        <td class="small text-end text-primary fw-bold">{{ r.total_amount|floatformat:2 }}</td>
+                        <td class="small">{{ r.supplier.name }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+                        <h6 class="text-muted">今日暂无入库记录</h6>
+                        <small class="text-muted">{{ today }}</small>
+                    </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

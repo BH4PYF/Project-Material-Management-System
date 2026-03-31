@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}个人设置{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-person-gear"></i> 个人设置</h4>
+</div>
+
+<div class="row g-4">
+    <!-- 个人信息 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person"></i> 个人信息</div>
+            <div class="card-body">
+                <form id="profileForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" value="{{ request.user.username }}" disabled>
+                        <div class="form-text">用户名不可修改</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色</label>
+                        <input type="text" class="form-control" value="{{ request.user.profile.get_role_display }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="first_name" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ request.user.first_name }}" maxlength="30">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">邮箱</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ request.user.email }}" maxlength="254">
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">联系电话</label>
+                        <input type="text" class="form-control" id="phone" name="phone" value="{{ request.user.profile.phone }}" maxlength="20">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> 保存信息</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-shield-lock"></i> 修改密码</div>
+            <div class="card-body">
+                <form id="passwordForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="old_password" class="form-label">当前密码</label>
+                        <input type="password" class="form-control" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">新密码</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required minlength="8">
+                        <div class="form-text">密码长度至少 8 位</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">确认新密码</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8">
+                    </div>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-key"></i> 修改密码</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('profileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('{% url "update_profile" %}', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showMsg(data.message, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showMsg(data.error || '保存失败');
+            }
+        })
+        .catch(() => showMsg('请求失败，请重试'));
+});
+
+document.getElementById('passwordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const newPwd = document.getElementById('new_password').value;
+    const confirmPwd = document.getElementById('confirm_password').value;
+    if (newPwd !== confirmPwd) {
+        showMsg('两次输入的新密码不一致');
+        return;
+    }
+    const formData = new FormData(this);
+    fetch('{% url "change_password" %}', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showMsg(data.message, 'success');
+                this.reset();
+            } else {
+                showMsg(data.error || '修改失败');
+            }
+        })
+        .catch(() => showMsg('请求失败，请重试'));
+});
+</script>
+{% endblock %}

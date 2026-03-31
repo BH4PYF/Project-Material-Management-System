@@ -1,0 +1,461 @@
+from django.db import models
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db.models import Sum, Q
+from django.utils import timezone
+from decimal import Decimal, ROUND_HALF_UP
+
+
+# ========== 软删除基础设施 ==========
+
+class SoftDeleteQuerySet(models.QuerySet):
+    """支持软删除的 QuerySet"""
+
+    def delete(self):
+        """批量软删除"""
+        return self.update(is_deleted=True, deleted_at=timezone.now())
+
+    def hard_delete(self):
+        """批量硬删除（真正从数据库删除）"""
+        return super().delete()
+
+    def alive(self):
+        """只返回未删除的记录"""
+        return self.filter(is_deleted=False)
+
+    def dead(self):
+        """只返回已删除的记录"""
+        return self.filter(is_deleted=True)
+
+
+class SoftDeleteManager(models.Manager):
+    """默认过滤已删除记录的 Manager"""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
+class AllObjectsManager(models.Manager):
+    """包含已删除记录的 Manager（用于备份等场景）"""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+
+class SoftDeleteModel(models.Model):
+    """软删除抽象基类"""
+    is_deleted = models.BooleanField('是否已删除', default=False, db_index=True)
+    deleted_at = models.DateTimeField('删除时间', null=True, blank=True)
+
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        """单条记录软删除"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['is_deleted', 'deleted_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """真正从数据库删除"""
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        """恢复已删除的记录"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save(update_fields=['is_deleted', 'deleted_at'])
+
+
+class Profile(models.Model):
+    """用户扩展信息"""
+    ROLE_CHOICES = [
+        ('admin', '管理员'),
+        ('management', '管理层'),
+        ('material_dept', '物资部'),
+        ('clerk', '材料员'),
+        ('supplier', '供应商'),
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    role = models.CharField('角色', max_length=20, choices=ROLE_CHOICES, default='clerk')
+    phone = models.CharField('联系电话', max_length=20, blank=True)
+    supplier_info = models.ForeignKey('Supplier', on_delete=models.SET_NULL, verbose_name='关联供应商档案', null=True, blank=True, related_name='user_profiles')
+
+    class Meta:
+        verbose_name = '用户资料'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.user.username} ({self.get_role_display()})"
+
+    @property
+    def display_name(self):
+        """显示名称，供应商优先返回供应商档案名称"""
+        if self.role == 'supplier' and self.supplier_info:
+            return self.supplier_info.name
+        return self.user.first_name or self.user.username
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
+    @property
+    def is_material_dept(self):
+        return self.role == 'material_dept'
+
+    @property
+    def is_management(self):
+        return self.role == 'management'
+
+    @property
+    def is_clerk(self):
+        return self.role == 'clerk'
+
+    @property
+    def is_supplier(self):
+        return self.role == 'supplier'
+
+    def sync_group_permissions(self):
+        """同步用户组权限到用户"""
+        from django.contrib.auth.models import Group
+        if self.user.groups.exists():
+            # 同步第一个组的权限到用户
+            group = self.user.groups.first()
+            self.user.user_permissions.clear()
+            for permission in group.permissions.all():
+                self.user.user_permissions.add(permission)
+            # 设置默认角色
+            self.role = 'clerk'
+            self.save()
+        else:
+            # 根据角色设置权限
+            self.user.user_permissions.clear()
+            if self.role == 'admin':
+                # 管理员拥有所有权限
+                self.user.is_staff = True
+                self.user.save()
+            elif self.role == 'management':
+                # 管理层拥有查看和管理权限
+                self.user.is_staff = True
+                self.user.save()
+            elif self.role == 'material_dept':
+                # 物资部拥有材料管理相关权限
+                self.user.is_staff = True
+                self.user.save()
+            else:
+                # 其他角色（材料员、供应商）不拥有后台权限
+                self.user.is_staff = False
+                self.user.save()
+
+
+class Project(SoftDeleteModel):
+    """工程项目"""
+    STATUS_CHOICES = [
+        ('planning', '筹备中'),
+        ('active', '进行中'),
+        ('completed', '已完工'),
+        ('paused', '暂停')
+    ]
+    code = models.CharField('项目编号', max_length=20, unique=True)
+    name = models.CharField('项目名称', max_length=200)
+    manager = models.CharField('项目负责人', max_length=50, blank=True)
+    location = models.CharField('项目地点', max_length=200, blank=True)
+    start_date = models.DateField('开工日期', null=True, blank=True)
+    end_date = models.DateField('预计竣工日期', null=True, blank=True)
+    budget = models.DecimalField('项目预算', max_digits=14, decimal_places=2, default=0)
+    status = models.CharField('项目状态', max_length=20, choices=STATUS_CHOICES, default='active')
+    remark = models.TextField('备注', blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '工程项目'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def get_total_inbound_amount(self):
+        return self.inbound_records.aggregate(t=Sum('total_amount'))['t'] or Decimal('0')
+
+
+
+class Category(SoftDeleteModel):
+    """材料分类"""
+    code = models.CharField('分类编号', max_length=20, unique=True)
+    name = models.CharField('分类名称', max_length=100)
+    remark = models.TextField('备注', blank=True)
+
+    class Meta:
+        verbose_name = '材料分类'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.name
+
+
+class Material(models.Model):
+    """材料档案"""
+    UNIT_CHOICES = [
+        ('吨', '吨'), ('千克', '千克'), ('立方米', '立方米'), ('平方米', '平方米'),
+        ('米', '米'), ('根', '根'), ('个', '个'), ('套', '套'), ('箱', '箱'),
+        ('袋', '袋'), ('卷', '卷'), ('块', '块'), ('张', '张'), ('件', '件'),
+    ]
+    code = models.CharField('材料编号', max_length=20, unique=True)
+    name = models.CharField('材料名称', max_length=200)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, verbose_name='材料分类', related_name='materials')
+    spec = models.CharField('规格型号', max_length=200, blank=True)
+    unit = models.CharField('计量单位', max_length=20, choices=UNIT_CHOICES)
+    standard_price = models.DecimalField('标准单价', max_digits=12, decimal_places=2, default=0)
+    safety_stock = models.DecimalField('安全库存量', max_digits=12, decimal_places=2, default=0)
+    remark = models.TextField('备注', blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '材料档案'
+        verbose_name_plural = verbose_name
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def get_total_inbound(self, project_id=None, start_date=None, end_date=None):
+        """获取累计入库量"""
+        in_filter = Q(material=self)
+        if project_id:
+            in_filter &= Q(project_id=project_id)
+        if start_date and end_date:
+            in_filter &= Q(date__range=[start_date, end_date])
+        total_in = InboundRecord.objects.filter(in_filter).aggregate(t=Sum('quantity'))['t'] or Decimal('0')
+        return total_in
+
+    def get_weighted_avg_cost(self, start_date=None, end_date=None):
+        """获取入库加权平均成本"""
+        if start_date and end_date:
+            in_filter = Q(material=self, date__range=[start_date, end_date])
+        else:
+            in_filter = Q(material=self)
+
+        agg = InboundRecord.objects.filter(in_filter).aggregate(
+            total_amount=Sum('total_amount'),
+            total_qty=Sum('quantity'),
+        )
+        total_in_qty = agg['total_qty'] or Decimal('0')
+        total_in_amount = agg['total_amount'] or Decimal('0')
+
+        if total_in_qty <= 0:
+            last_in = InboundRecord.objects.filter(material=self).order_by('-date').first()
+            return last_in.unit_price if last_in else Decimal('0')
+        return total_in_amount / total_in_qty
+
+
+class Supplier(SoftDeleteModel):
+    """供应商"""
+    CREDIT_CHOICES = [('excellent', '优秀'), ('good', '良好'), ('average', '一般')]
+    code = models.CharField('供应商编号', max_length=20, unique=True)
+    name = models.CharField('供应商名称', max_length=200)
+    contact = models.CharField('联系人', max_length=50, blank=True)
+    phone = models.CharField('联系电话', max_length=20, blank=True)
+    address = models.CharField('地址', max_length=300, blank=True)
+    main_type = models.ForeignKey(Category, on_delete=models.SET_NULL, verbose_name='主营材料类型', related_name='suppliers', null=True, blank=True)
+    credit_rating = models.CharField('信用等级', max_length=20, choices=CREDIT_CHOICES, default='good')
+    start_date = models.DateField('合作开始日期', null=True, blank=True)
+    remark = models.TextField('备注', blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '供应商'
+        verbose_name_plural = verbose_name
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    def get_total_purchase(self):
+        return self.inbound_records.aggregate(t=Sum('total_amount'))['t'] or Decimal('0')
+
+
+class InboundRecord(SoftDeleteModel):
+    """入库记录"""
+    QUALITY_CHOICES = [('qualified', '合格'), ('unqualified', '不合格')]
+    no = models.CharField('入库单号', max_length=30, unique=True)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, verbose_name='所属项目', related_name='inbound_records')
+    material = models.ForeignKey(Material, on_delete=models.PROTECT, verbose_name='材料', related_name='inbound_records')
+    date = models.DateField('入库日期', db_index=True)
+    quantity = models.DecimalField('入库数量', max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField('单价', max_digits=12, decimal_places=2)
+    total_amount = models.DecimalField('总金额', max_digits=14, decimal_places=2)
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, verbose_name='供应商', related_name='inbound_records', db_index=True)
+    batch_no = models.CharField('采购批次号', max_length=50, blank=True)
+    inspector = models.CharField('验收人', max_length=50, blank=True)
+    quality_status = models.CharField('质量状态', max_length=20, choices=QUALITY_CHOICES, default='qualified')
+    # 快照字段：入库时记录项目地址和规格，防止后续修改导致历史数据不一致
+    location = models.CharField('项目地址（快照）', max_length=100)
+    spec = models.CharField('规格型号（快照）', max_length=100)
+    operator = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='操作员', related_name='inbound_ops')
+    operate_time = models.DateTimeField('操作时间', auto_now_add=True)
+    remark = models.TextField('备注', blank=True)
+
+    class Meta:
+        verbose_name = '入库记录'
+        verbose_name_plural = verbose_name
+        ordering = ['-date', '-operate_time']
+
+    def __str__(self):
+        return self.no
+
+    def clean(self):
+        if self.quantity is not None and self.quantity <= 0:
+            raise ValidationError({'quantity': '入库数量必须为正数'})
+        if self.unit_price is not None and self.unit_price < 0:
+            raise ValidationError({'unit_price': '单价不能为负数'})
+
+    def save(self, *args, **kwargs):
+        if self.quantity is not None and self.unit_price is not None:
+            self.total_amount = (self.quantity * self.unit_price).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
+        # 仅在完整保存时执行验证，部分更新（如软删除）跳过
+        if not kwargs.get('update_fields'):
+            self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class PurchasePlan(SoftDeleteModel):
+    """采购计划"""
+    STATUS_PENDING = 'pending'
+    STATUS_PURCHASING = 'purchasing'
+    STATUS_SHIPPED = 'shipped'
+    STATUS_RECEIVED = 'received'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '审批中'),
+        (STATUS_PURCHASING, '采购中'),
+        (STATUS_SHIPPED, '已发货'),
+        (STATUS_RECEIVED, '已入库'),
+    ]
+    no = models.CharField('计划编号', max_length=30, unique=True)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, verbose_name='所属项目', related_name='purchase_plans')
+    material = models.ForeignKey(Material, on_delete=models.PROTECT, verbose_name='材料', related_name='purchase_plans')
+    quantity = models.DecimalField('采购数量', max_digits=12, decimal_places=2)
+    spec = models.CharField('规格型号', max_length=200, default='')
+    unit_price = models.DecimalField('预计单价', max_digits=12, decimal_places=2, default=Decimal('0'))
+    total_amount = models.DecimalField('预计金额', max_digits=14, decimal_places=2, default=Decimal('0'))
+    supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, verbose_name='供应商', related_name='purchase_plans', null=True, blank=True)
+    status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    planned_date = models.DateField('计划采购日期', null=True, blank=True)
+    remark = models.TextField('备注', blank=True)
+    operator = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='操作员', related_name='purchase_plans')
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
+    update_time = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '采购计划'
+        verbose_name_plural = verbose_name
+        ordering = ['-create_time']
+
+    def __str__(self):
+        return f"{self.no} - {self.material.name}"
+
+    def save(self, *args, **kwargs):
+        # 使用材料的标准单价计算预计金额
+        if self.material and self.quantity is not None:
+            self.total_amount = self.quantity * self.material.standard_price
+        super().save(*args, **kwargs)
+
+
+class Delivery(SoftDeleteModel):
+    """发货单"""
+    SHIPPING_CHOICES = [
+        ('special', '专车'),
+        ('logistics', '物流'),
+    ]
+    STATUS_PENDING = 'pending'
+    STATUS_SHIPPED = 'shipped'
+    STATUS_RECEIVED = 'received'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '待发货'),
+        (STATUS_SHIPPED, '已发货'),
+        (STATUS_RECEIVED, '已收货'),
+    ]
+    no = models.CharField('发货单号', max_length=30, unique=True)
+    purchase_plan = models.ForeignKey(PurchasePlan, on_delete=models.PROTECT, verbose_name='采购计划', related_name='deliveries')
+    actual_quantity = models.DecimalField('实际发货数量', max_digits=12, decimal_places=2)
+    actual_unit_price = models.DecimalField('实际单价', max_digits=12, decimal_places=2)
+    actual_total_amount = models.DecimalField('实际金额', max_digits=14, decimal_places=2, default=Decimal('0'))
+    shipping_method = models.CharField('送货方式', max_length=20, choices=SHIPPING_CHOICES, default='special')
+    plate_number = models.CharField('车牌号', max_length=20, blank=True)
+    tracking_no = models.CharField('运单号', max_length=50, blank=True)
+    status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, verbose_name='供应商', related_name='deliveries')
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
+    ship_time = models.DateTimeField('发货时间', null=True, blank=True)
+    remark = models.TextField('备注', blank=True)
+
+    class Meta:
+        verbose_name = '发货单'
+        verbose_name_plural = verbose_name
+        ordering = ['-create_time']
+
+    def __str__(self):
+        return f"{self.no} - {self.purchase_plan.material.name}"
+
+    def save(self, *args, **kwargs):
+        self.actual_total_amount = self.actual_quantity * self.actual_unit_price
+        super().save(*args, **kwargs)
+
+
+class OperationLog(models.Model):
+    """操作日志"""
+    TYPE_CHOICES = [('create', '新增'), ('update', '修改'), ('delete', '删除'), ('export', '导出'), ('login', '登录'), ('other', '其他')]
+    time = models.DateTimeField('操作时间', auto_now_add=True, db_index=True)
+    operator = models.CharField('操作员', max_length=50)
+    module = models.CharField('操作模块', max_length=50)
+    op_type = models.CharField('操作类型', max_length=20, choices=TYPE_CHOICES)
+    details = models.TextField('操作详情')
+    related_no = models.CharField('关联单号', max_length=50, blank=True)
+
+    class Meta:
+        verbose_name = '操作日志'
+        verbose_name_plural = verbose_name
+        ordering = ['-time']
+
+    def __str__(self):
+        return f"{self.time} - {self.operator} - {self.details}"
+
+
+class SystemSetting(models.Model):
+    """系统设置"""
+    key = models.CharField('配置键', max_length=50, unique=True)
+    value = models.CharField('配置值', max_length=200, blank=True)
+    description = models.CharField('配置说明', max_length=200, blank=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '系统设置'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+
+    @classmethod
+    def get_setting(cls, key, default=''):
+        """获取系统配置值"""
+        setting = cls.objects.filter(key=key).first()
+        return setting.value if setting else default
+
+    @classmethod
+    def set_setting(cls, key, value, description=''):
+        """设置系统配置值"""
+        setting = cls.objects.filter(key=key).first()
+        if setting:
+            setting.value = value
+            if description:
+                setting.description = description
+            setting.save()
+        else:
+            cls.objects.create(key=key, value=value, description=description)

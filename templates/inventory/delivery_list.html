@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}发货管理{% endblock %}
+{% block page_title %}发货管理{% endblock %}
+{% block extra_js %}
+<script>
+function calcTotal(planId) {
+    var qty = parseFloat(document.getElementById('qty_' + planId).value) || 0;
+    var price = parseFloat(document.getElementById('price_' + planId).value) || 0;
+    var total = (qty * price).toFixed(2);
+    document.getElementById('total_' + planId).textContent = total > 0 ? total : '-';
+}
+function onShippingChange(planId, sel) {
+    var plateDiv = document.getElementById('plate_' + planId);
+    var trackingDiv = document.getElementById('tracking_' + planId);
+    if (sel.value === 'special') {
+        plateDiv.style.display = 'block';
+        trackingDiv.style.display = 'none';
+    } else {
+        plateDiv.style.display = 'none';
+        trackingDiv.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-truck"></i> 发货管理</h5>
+    <div>        <a href="{% url 'export_deliveries' %}" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-download"></i> 批量导出
+        </a>
+    </div>
+</div>
+
+<!-- 可发货的采购计划 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h6 class="mb-0"><i class="bi bi-cart-plus"></i> 待发货的采购计划</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>采购计划号</th>
+                    <th>项目</th>
+                    <th>材料</th>
+                    <th>规格</th>
+                    <th>计划数量</th>
+                    <th>实际数量 <span class="text-danger">*</span></th>
+                    <th>实际单价 <span class="text-danger">*</span></th>
+                    <th>总金额</th>
+                    <th>送货方式</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for plan in available_plans %}
+            <tr>
+                <form method="post" action="{% url 'delivery_create' %}" id="form_{{ plan.id }}" data-ajax>
+                    {% csrf_token %}
+                    <input type="hidden" name="purchase_plan_id" value="{{ plan.id }}">
+                    <td><small><code>{{ plan.no }}</code></small></td>
+                    <td>{{ plan.project.name }}</td>
+                    <td>{{ plan.material.name }}</td>
+                    <td><small class="text-muted">{{ plan.material.spec|default:'-' }}</small></td>
+                    <td>{{ plan.quantity|floatformat:2 }} {{ plan.material.unit }}</td>
+                    <td>
+                        <input type="number" step="0.01" min="0.01" name="actual_quantity" id="qty_{{ plan.id }}" class="form-control form-control-sm" placeholder="数量" required oninput="calcTotal({{ plan.id }})" style="min-width: 80px;">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0" name="actual_unit_price" id="price_{{ plan.id }}" class="form-control form-control-sm" placeholder="单价" required oninput="calcTotal({{ plan.id }})" style="min-width: 80px;">
+                    </td>
+                    <td><small class="text-primary fw-bold" id="total_{{ plan.id }}">-</small></td>
+                    <td style="min-width: 150px;">
+                        <select name="shipping_method" class="form-select form-select-sm mb-1" onchange="onShippingChange({{ plan.id }}, this)">
+                            <option value="special">专车</option>
+                            <option value="logistics">物流</option>
+                        </select>
+                        <div id="plate_{{ plan.id }}">
+                            <input type="text" name="plate_number" class="form-control form-control-sm" placeholder="车牌号">
+                        </div>
+                        <div id="tracking_{{ plan.id }}" style="display:none;">
+                            <input type="text" name="tracking_no" class="form-control form-control-sm" placeholder="运单号">
+                        </div>
+                    </td>
+                    <td>
+                        {% if request.user.profile.is_supplier or request.user.profile.is_admin %}
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <i class="bi bi-plus-lg"></i> 创建
+                        </button>
+                        {% else %}
+                        <span class="text-muted small"><i class="bi bi-lock"></i> 无权限</span>
+                        {% endif %}
+                    </td>
+                </form>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="text-center text-muted py-4">暂无待发货的采购计划</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- 已创建的发货单 -->
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h6 class="mb-0"><i class="bi bi-box-seam"></i> 已创建的发货单</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>发货单号</th>
+                    <th>采购计划</th>
+                    <th>项目</th>
+                    <th>材料</th>
+                    <th>供应商</th>
+                    <th class="text-end">数量</th>
+                    <th class="text-end">金额</th>
+                    <th>送货方式</th>
+                    <th>发货时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in deliveries %}
+            <tr>
+                <td><small><code>{{ d.no }}</code></small></td>
+                <td><small>{{ d.purchase_plan.no }}</small></td>
+                <td>{{ d.purchase_plan.project.name }}</td>
+                <td>{{ d.purchase_plan.material.name }}</td>
+                <td>{{ d.supplier.name }}</td>
+                <td class="text-end">{{ d.actual_quantity|floatformat:2 }} {{ d.purchase_plan.material.unit }}</td>
+                <td class="text-end">{{ d.actual_total_amount|floatformat:2 }}</td>
+                <td>
+                    {% if d.shipping_method == 'special' %}
+                        <span class="badge bg-info">专车</span>
+                        {% if d.plate_number %}<br><small class="text-muted">{{ d.plate_number }}</small>{% endif %}
+                    {% else %}
+                        <span class="badge bg-secondary">物流</span>
+                        {% if d.tracking_no %}<br><small class="text-muted">{{ d.tracking_no }}</small>{% endif %}
+                    {% endif %}
+                </td>
+                <td>{% if d.ship_time %}{{ d.ship_time|date:'Y-m-d H:i' }}{% else %}-{% endif %}</td>
+                <td>
+                    {% if d.status == 'pending' and request.user.profile.is_admin or d.status == 'pending' and request.user.profile.is_supplier and request.user.profile.supplier_info_id == d.supplier_id %}
+                    <form method="post" action="{% url 'delivery_confirm_ship' d.pk %}" class="d-inline" data-ajax>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-success" title="确认发货">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </form>
+                    <a href="{% url 'delivery_edit' d.pk %}" class="btn btn-sm btn-outline-primary" title="编辑">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <form method="post" action="{% url 'delivery_delete' d.pk %}" class="d-inline" data-ajax>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="删除">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="text-center text-muted py-4">暂无发货单</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        
+        <!-- 分页控件 -->
+        {% if is_paginated %}
+        <nav aria-label="分页导航" class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">首页</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">上一页</span>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">末页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">下一页</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">末页</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+
+// 获取 CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+</script>
+{% endblock %}

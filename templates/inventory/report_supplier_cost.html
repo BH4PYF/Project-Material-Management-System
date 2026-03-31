@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}供应商采购分析{% endblock %}
+{% block page_title %}供应商采购分析{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-truck"></i> 供应商采购分析</h5>
+    <a href="{% url 'report_page' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回报表</a>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="supplier_id" onchange="this.form.submit()" style="min-width: 320px;">
+                <option value="">请选择供应商</option>
+                {% for s in suppliers %}<option value="{{ s.id }}" {% if supplier and supplier.id == s.id %}selected{% endif %}>{{ s.code }} - {{ s.name }}</option>{% endfor %}
+            </select>
+        </div>
+        {% if supplier %}
+        <div class="col-auto">
+            <a href="{% url 'report_supplier_cost' %}?supplier_id={{ supplier.id }}&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&export=excel" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{% if supplier %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white"><h6 class="mb-0">供应商: {{ supplier.name }} ({{ supplier.code }})</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>项目</th><th>材料名称</th><th>规格</th><th>单位</th><th>数量</th><th>单价(元)</th><th>总金额(元)</th><th>日期</th></tr></thead>
+            <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.project }}</td><td>{{ r.material }}</td><td>{{ r.spec }}</td><td>{{ r.unit }}</td>
+                <td>{{ r.quantity|floatformat:2 }}</td>
+                <td>{{ r.unit_price|floatformat:2 }}</td>
+                <td class="text-danger fw-bold">{{ r.total_amount|floatformat:2 }}</td>
+                <td>{{ r.date }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">该供应商暂无采购记录</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if records %}
+            <tfoot><tr class="table-light"><td colspan="6" class="text-end fw-bold">合计</td><td class="text-danger fw-bold">{{ total_amount|floatformat:2 }}</td><td></td></tr></tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">请选择一个供应商查看采购分析</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}图表分析{% endblock %}
+{% block page_title %}图表分析{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin-bottom: 30px;
+    }
+    .date-filter {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> 入库总额TOP10</h6>
+                    <button class="btn btn-light btn-sm" onclick="loadChart('stock')">刷新</button>
+                </div>
+                <div class="card-body">
+                    <div class="date-filter">
+                        <label>开始日期:</label>
+                        <input type="date" id="stockDateFrom" class="form-control form-control-sm">
+                        <label>结束日期:</label>
+                        <input type="date" id="stockDateTo" class="form-control form-control-sm">
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadChart('stock')">筛选</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="stockChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> 入库大类分布图</h6>
+                    <button class="btn btn-light btn-sm" onclick="loadChart('category')">刷新</button>
+                </div>
+                <div class="card-body">
+                    <div class="date-filter">
+                        <label>开始日期:</label>
+                        <input type="date" id="categoryDateFrom" class="form-control form-control-sm">
+                        <label>结束日期:</label>
+                        <input type="date" id="categoryDateTo" class="form-control form-control-sm">
+                        <button class="btn btn-outline-success btn-sm" onclick="loadChart('category')">筛选</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let stockChart, categoryChart;
+
+    function loadChart(type) {
+        let dateFrom, dateTo;
+        if (type === 'stock') {
+            dateFrom = document.getElementById('stockDateFrom').value;
+            dateTo = document.getElementById('stockDateTo').value;
+        } else if (type === 'category') {
+            dateFrom = document.getElementById('categoryDateFrom').value;
+            dateTo = document.getElementById('categoryDateTo').value;
+        }
+
+        let url = `/api/chart-data/?type=${type}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById(`${type}Chart`).getContext('2d');
+                if (type === 'stock') {
+                    if (stockChart) stockChart.destroy();
+                    stockChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.data.map(item => item.name),
+                            datasets: [{
+                                label: '入库总额',
+                                data: data.data.map(item => item.value),
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 10000).toFixed(2) + ' 万';
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.dataset.label + ': ' + (context.parsed.y / 10000).toFixed(2) + ' 万';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else if (type === 'category') {
+                    if (categoryChart) categoryChart.destroy();
+                    categoryChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.data.map(item => item.name),
+                            datasets: [{
+                                data: data.data.map(item => item.value),
+                                backgroundColor: [
+                                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                                    '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ' + (context.parsed / 10000).toFixed(2) + ' 万';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Error loading chart:', error));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadChart('stock');
+        loadChart('category');
+    });
+</script>
+{% endblock %}

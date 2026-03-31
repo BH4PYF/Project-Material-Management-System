@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block title %}系统设置{% endblock %}
+{% block page_title %}系统设置{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-gear"></i> 系统设置</h5>
+</div>
+
+<!-- Tab 导航 -->
+<ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+            <i class="bi bi-building"></i> 基础设置
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+            <i class="bi bi-journal-text"></i> 操作日志
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
+            <i class="bi bi-tools"></i> 高级管理
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="settingsTabContent">
+    <!-- Tab 1: 基础设置 -->
+    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+        <div class="row g-3">
+    <!-- 系统基本信息 -->
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-house"></i> 自定义导航栏标题</h6>
+            </div>
+            <div class="card-body">
+                <form id="systemSettingsForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="company_name" class="form-label">导航栏标题</label>
+                        <input type="text" class="form-control" id="company_name" name="company_name" 
+                               value="{{ company_name }}" placeholder="例如：XX 建筑工程公司材料管理系统">
+                        <small class="text-muted">此名称将显示在系统顶部导航栏的标题位置</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> 保存设置
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 登录安全设置 -->
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-shield-lock"></i> 登录限流配置</h6>
+            </div>
+            <div class="card-body">
+                <form id="loginSecurityForm" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="login_max_attempts" class="form-label">最大登录尝试次数</label>
+                            <input type="number" class="form-control" id="login_max_attempts" name="login_max_attempts" 
+                                   value="{{ login_max_attempts }}" min="1" max="10">
+                            <small class="text-muted">超过此次数后账户将被锁定</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="login_lockout_minutes" class="form-label">锁定时长（分钟）</label>
+                            <input type="number" class="form-control" id="login_lockout_minutes" name="login_lockout_minutes" 
+                                   value="{{ login_lockout_minutes }}" min="1" max="60">
+                            <small class="text-muted">账户被锁定的时长</small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> 保存设置
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 材料分类管理 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-plus-circle display-4 text-info"></i>
+                <h6 class="mt-2">添加自定义分类</h6>
+                <p class="text-muted small">添加自定义材料分类</p>
+                <button type="button" class="btn btn-info btn-sm" onclick="showAddCategoryModal()">添加分类</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-cloud-download display-4 text-success"></i>
+                <h6 class="mt-2">数据备份</h6>
+                <p class="text-muted small">导出全部数据为 JSON 文件备份</p>
+                <form method="post" action="{% url 'backup_data' %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm">导出备份</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 材料分类列表表格 -->
+    <div class="col-md-12 mt-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-tags"></i> 材料分类管理</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="15%">分类编码</th>
+                                <th width="25%">分类名称</th>
+                                <th width="50%">备注</th>
+                                <th width="10%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-list">
+                            <!-- 分类列表将通过 JavaScript 加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+        <!-- 基础设置 Tab 结束 -->
+    </div>
+
+
+
+    <!-- Tab 3: 操作日志 -->
+    <div class="tab-pane fade" id="logs" role="tabpanel">
+        <div id="logs-loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">加载操作日志...</p>
+        </div>
+        <div id="logs-content" class="row g-3" style="display:none;"></div>
+    </div>
+
+    <!-- Tab 4: 高级管理 -->
+    <div class="tab-pane fade" id="advanced" role="tabpanel">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-speedometer2 display-4 text-primary"></i>
+                        <h6 class="mt-3">Django 管理后台</h6>
+                        <p class="text-muted small">完整的数据库模型管理、用户权限配置等</p>
+                        <a href="/admin/" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-box-arrow-up-right"></i> 进入管理后台
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-database-gear display-4 text-success"></i>
+                        <h6 class="mt-3">数据备份与恢复</h6>
+                        <p class="text-muted small">导出全部数据为 JSON 格式或从备份恢复</p>
+                        <div class="d-grid gap-2">
+                            <form method="post" action="{% url 'backup_data' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-cloud-download"></i> 导出数据备份
+                                </button>
+                            </form>
+                            <a href="/admin/inventory/systemsetting/" class="btn btn-outline-secondary" target="_blank">
+                                <i class="bi bi-upload"></i> 导入恢复
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> 系统信息</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th width="20%">导航栏标题</th>
+                                <td>{{ company_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Django 版本</th>
+                                <td>{{ django_version }}</td>
+                            </tr>
+                            <tr>
+                                <th>Python 版本</th>
+                                <td>{{ python_version }}</td>
+                            </tr>
+                            <tr>
+                                <th>数据库类型</th>
+                                <td>SQLite</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑分类模态框 -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryModalLabel">添加分类</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="categoryForm" method="post" action="{% url 'add_custom_category' %}" data-ajax>
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="categoryId" name="id">
+                    <div class="mb-3">
+                        <label class="form-label">分类名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="categoryName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">分类编码</label>
+                        <input type="text" class="form-control" id="categoryCode" name="code" placeholder="系统自动生成">
+                        <div class="form-text">留空则系统自动生成编码</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="categoryRemark" name="remark" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// HTML 转义函数，防止 XSS 攻击
+function escapeHtml(text) {
+    if (text === null || text === undefined) {
+        return '';
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 加载分类列表
+function loadCategories() {
+    fetch('{% url "category_list_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('category-list');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">暂无分类数据</td></tr>';
+                return;
+            }
+            
+            data.forEach(category => {
+                const row = document.createElement('tr');
+                // 使用 escapeHtml 进行转义，防止 XSS 攻击
+                row.innerHTML = `
+                    <td>${escapeHtml(category.code)}</td>
+                    <td>${escapeHtml(category.name)}</td>
+                    <td>${escapeHtml(category.remark) || '-'}</td>
+                    <td></td>
+                `;
+                // 使用 DOM API 创建删除按钮，避免 onclick 拼接导致的 XSS 风险
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-sm btn-outline-danger';
+                deleteBtn.textContent = '删除';
+                deleteBtn.addEventListener('click', function() {
+                    deleteCategory(category.id, category.name);
+                });
+                row.lastElementChild.appendChild(deleteBtn);
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => {
+            console.error('加载分类数据失败:', error);
+            showMsg('加载分类数据失败');
+        });
+}
+
+// 显示添加分类模态框
+function showAddCategoryModal() {
+    document.getElementById('categoryModalLabel').textContent = '添加分类';
+    document.getElementById('categoryForm').action = '{% url "add_custom_category" %}';
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryCode').disabled = false;
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+// 删除分类
+function deleteCategory(id, name) {
+    var url = `{% url "delete_category" pk=0 %}`.replace('0', id);
+    confirmDelete(url, name);
+}
+
+// 页面加载完成后加载分类列表
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategories();
+
+    // ========== Tab 懒加载 ==========
+    const tabLoadState = { logs: false };
+
+    document.querySelectorAll('#settingsTabs button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function (e) {
+            const target = e.target.getAttribute('data-bs-target').replace('#', '');
+            if (target === 'logs' && !tabLoadState.logs) {
+                loadLogsTab();
+                tabLoadState.logs = true;
+            }
+        });
+    });
+
+    function loadLogsTab() {
+        fetch('{% url "settings_logs_api" %}')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('logs-content');
+                let html = '<div class="col-md-12"><div class="card shadow-sm">';
+                html += '<div class="card-header bg-light d-flex justify-content-between align-items-center">';
+                html += '<h6 class="mb-0"><i class="bi bi-journal-text"></i> 最近操作日志</h6>';
+                html += '<a href="{% url "log_list" %}" class="btn btn-primary btn-sm"><i class="bi bi-list-ul"></i> 查看全部</a>';
+                html += '</div><div class="card-body"><table class="table table-hover"><thead><tr>';
+                html += '<th>时间</th><th>操作员</th><th>模块</th><th>操作类型</th><th>详情</th><th>关联单号</th></tr></thead><tbody>';
+                if (data.logs.length === 0) {
+                    html += '<tr><td colspan="6" class="text-center text-muted">暂无操作日志</td></tr>';
+                } else {
+                    const typeColors = { create: 'success', update: 'primary', 'delete': 'danger', view: 'info' };
+                    data.logs.forEach(function(log) {
+                        const color = typeColors[log.op_type] || 'secondary';
+                        html += '<tr><td>' + escapeHtml(log.time) + '</td>';
+                        html += '<td>' + escapeHtml(log.operator) + '</td>';
+                        html += '<td><span class="badge bg-secondary">' + escapeHtml(log.module) + '</span></td>';
+                        html += '<td><span class="badge bg-' + color + '">' + escapeHtml(log.op_type_display) + '</span></td>';
+                        html += '<td>' + escapeHtml(log.details) + '</td>';
+                        html += '<td>' + escapeHtml(log.related_no) + '</td></tr>';
+                    });
+                }
+                html += '</tbody></table></div></div></div>';
+                container.innerHTML = html;
+                document.getElementById('logs-loading').style.display = 'none';
+                container.style.display = 'flex';
+                container.classList.add('flex-wrap');
+            })
+            .catch(function() {
+                document.getElementById('logs-loading').innerHTML = '<p class="text-danger">加载失败，请刷新页面重试</p>';
+            });
+    }
+    
+    // 系统设置表单提交处理（公司名称）
+    const settingsForm = document.getElementById('systemSettingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const companyName = formData.get('company_name');
+            
+            try {
+                const response = await fetch('{% url "save_system_settings" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMsg(data.message, 'success');
+                    
+                    // 更新导航栏标题（如果是在首页）
+                    if (window.location.pathname === '/' || window.location.pathname.includes('/dashboard')) {
+                        document.querySelector('.page-title').textContent = data.company_name;
+                    }
+                } else {
+                    showMsg(data.error || '保存失败');
+                }
+            } catch (error) {
+                showMsg('网络错误：' + error.message);
+            }
+        });
+    }
+    
+    // 登录安全配置表单提交处理
+    const loginSecurityForm = document.getElementById('loginSecurityForm');
+    if (loginSecurityForm) {
+        loginSecurityForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('{% url "save_login_security_settings" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMsg(data.message, 'success');
+                } else {
+                    showMsg(data.error || '保存失败');
+                }
+            } catch (error) {
+                showMsg('网络错误：' + error.message);
+            }
+        });
+    }
+});
+
+// 获取 CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+</script>
+
+{% endblock %}

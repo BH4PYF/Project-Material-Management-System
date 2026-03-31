@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}月度入库统计{% endblock %}
+{% block page_title %}月度入库统计{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-calendar-month"></i> 月度入库统计</h5>
+    <a href="{% url 'report_page' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回报表</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>月份</th><th>入库总额(元)</th></tr></thead>
+            <tbody>
+            {% for r in report_data %}
+            <tr>
+                <td>{{ r.date }}</td>
+                <td class="text-primary">{{ r.inbound|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-4">暂无统计数据</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

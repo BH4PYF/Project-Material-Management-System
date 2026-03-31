@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}快速收货{% endblock %}
+{% block page_title %}快速收货{% endblock %}
+{% block extra_css %}
+<style>
+.receipt-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px dashed #dee2e6;
+}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <!-- 左侧：发货单选择区域 -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-list-check"></i> 选择发货单</h6>
+            </div>
+            <div class="card-body">
+                <!-- 手动输入区域 -->
+                <div class="mb-3">
+                    <label class="form-label">发货单号</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                        <input type="text" class="form-control form-control-lg" id="manualInput" placeholder="请输入发货单号">
+                        <button class="btn btn-success" type="button" id="searchBtn">
+                            <i class="bi bi-search"></i> 查询
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 最近发货单列表 -->
+                <div>
+                    <h6 class="fw-bold mb-3"><i class="bi bi-clock-history"></i> 最近已发货</h6>
+                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                        {% for d in deliveries %}
+                        <a href="#" class="list-group-item list-group-item-action py-2 delivery-item" data-no="{{ d.no }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="fw-bold">{{ d.no }}</small>
+                                    <div class="small text-muted">{{ d.purchase_plan.material.name }}</div>
+                                </div>
+                                <span class="badge bg-primary">{{ d.actual_quantity }} {{ d.purchase_plan.material.unit }}</span>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="list-group-item text-center text-muted py-3">
+                            <i class="bi bi-inbox fs-4 d-block mb-1"></i>
+                            <small>暂无待收货</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：收货信息录入 -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="bi bi-clipboard-check"></i> 收货确认</h6>
+            </div>
+            <div class="card-body">
+                <form id="receiveForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="deliveryId" name="delivery_id">
+
+                    <!-- 发货单信息展示 -->
+                    <div class="receipt-card p-3 rounded mb-4" id="deliveryInfo">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-truck"></i> 发货单信息</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">发货单号</label>
+                                <div class="fw-bold" id="infoDeliveryNo">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">发货时间</label>
+                                <div class="fw-bold" id="infoShipTime">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">所属项目</label>
+                                <div class="fw-bold" id="infoProject">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">项目地址</label>
+                                <div class="fw-bold" id="infoLocation">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">材料名称</label>
+                                <div class="fw-bold" id="infoMaterial">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">规格型号</label>
+                                <div class="fw-bold" id="infoSpec">-</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">发货数量</label>
+                                <div class="fw-bold text-primary" id="infoQuantity">-</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">单价</label>
+                                <div class="fw-bold text-primary" id="infoUnitPrice">-</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">总金额</label>
+                                <div class="fw-bold text-success" id="infoTotal">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">供应商</label>
+                                <div class="fw-bold" id="infoSupplier">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">送货方式</label>
+                                <div class="fw-bold" id="infoShipping">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg" id="confirmBtn" disabled>
+                            <i class="bi bi-check-circle"></i> 确认收货并入库
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="resetBtn">
+                            <i class="bi bi-arrow-counterclockwise"></i> 重置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 成功提示模态框 -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                <h5 class="mt-3 mb-2">收货成功！</h5>
+                <p class="text-muted mb-3">入库单号：<span id="successInboundNo" class="fw-bold text-primary"></span></p>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="continueBtn">继续收货</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let currentDelivery = null;
+
+// 获取 CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 从列表选择发货单
+function selectDelivery(no) {
+    document.getElementById('manualInput').value = no;
+    searchByNo(no);
+}
+
+// 手动查询发货单
+async function searchByNo(no) {
+    const deliveryNo = no || document.getElementById('manualInput').value.trim();
+
+    if (!deliveryNo) {
+        showMsg('请输入发货单号');
+        return;
+    }
+
+    console.log('查询发货单:', deliveryNo);
+
+    // 显示加载状态
+    document.getElementById('infoDeliveryNo').innerHTML = '<span class="spinner-border spinner-border-sm"></span> 查询中...';
+
+    try {
+        const url = '{% url "get_delivery_by_no" %}?no=' + encodeURIComponent(deliveryNo);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || '查询失败');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            currentDelivery = data.delivery;
+            fillDeliveryInfo(data.delivery);
+            document.getElementById('confirmBtn').disabled = false;
+        }
+    } catch (error) {
+        console.error('查询错误:', error);
+        showMsg(error.message || '查询失败');
+        resetForm();
+    }
+}
+
+// 填充发货单信息
+function fillDeliveryInfo(delivery) {
+    document.getElementById('deliveryId').value = delivery.id;
+    document.getElementById('infoDeliveryNo').textContent = delivery.no || '-';
+    document.getElementById('infoShipTime').textContent = delivery.ship_time || '-';
+    document.getElementById('infoProject').textContent = delivery.project_name || '-';
+    document.getElementById('infoLocation').textContent = delivery.project_location || '-';
+    document.getElementById('infoMaterial').textContent = delivery.material_name || '-';
+    document.getElementById('infoSpec').textContent = delivery.material_spec || '-';
+    document.getElementById('infoQuantity').textContent = delivery.quantity || '-';
+    document.getElementById('infoUnitPrice').textContent = delivery.unit_price ? '¥' + delivery.unit_price : '-';
+    document.getElementById('infoTotal').textContent = delivery.total_amount ? '¥' + delivery.total_amount : '-';
+    document.getElementById('infoSupplier').textContent = delivery.supplier_name || '-';
+    document.getElementById('infoShipping').textContent = (delivery.shipping_method || '-') + (delivery.plate_number ? ' - ' + delivery.plate_number : '');
+}
+
+// 表单提交
+async function submitForm(e) {
+    e.preventDefault();
+
+    if (!currentDelivery) {
+        showMsg('请先选择或输入发货单号');
+        return;
+    }
+
+    showConfirm('确认收货并生成入库记录？', function() {
+        const btn = document.getElementById('confirmBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 处理中...';
+
+        try {
+            // 自动添加收货日期（今天）和项目地址
+            const today = new Date().toISOString().split('T')[0];
+            let location = '';
+            if (currentDelivery && currentDelivery.project_location) {
+                location = currentDelivery.project_location;
+            }
+
+            const formData = new FormData();
+            formData.append('delivery_id', document.getElementById('deliveryId').value);
+            formData.append('receive_date', today);
+            formData.append('location', location);
+            formData.append('remark', '');
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            // 发送请求
+            fetch('{% url "quick_receive_confirm" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('successInboundNo').textContent = data.inbound_no;
+                    const modal = new bootstrap.Modal(document.getElementById('successModal'));
+                    modal.show();
+                    
+                    // 从列表中移除已收货的发货单
+                    removeDeliveryFromList(currentDelivery.no);
+                } else {
+                    showMsg(data.error || '收货失败');
+                }
+            })
+            .catch(error => {
+                console.error('请求失败:', error);
+                showMsg('网络错误，请重试');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> 确认收货并入库';
+            });
+        } catch (error) {
+            console.error('处理失败:', error);
+            showMsg('处理失败，请重试');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 确认收货并入库';
+        }
+    });
+    return;
+}
+
+// 重置表单
+function resetForm() {
+    currentDelivery = null;
+    document.getElementById('receiveForm').reset();
+    document.getElementById('deliveryId').value = '';
+    document.getElementById('infoDeliveryNo').textContent = '-';
+    document.getElementById('infoShipTime').textContent = '-';
+    document.getElementById('infoProject').textContent = '-';
+    document.getElementById('infoLocation').textContent = '-';
+    document.getElementById('infoMaterial').textContent = '-';
+    document.getElementById('infoSpec').textContent = '-';
+    document.getElementById('infoQuantity').textContent = '-';
+    document.getElementById('infoUnitPrice').textContent = '-';
+    document.getElementById('infoTotal').textContent = '-';
+    document.getElementById('infoSupplier').textContent = '-';
+    document.getElementById('infoShipping').textContent = '-';
+    document.getElementById('confirmBtn').disabled = true;
+    document.getElementById('manualInput').value = '';
+}
+
+// 从列表中移除已收货的发货单
+function removeDeliveryFromList(deliveryNo) {
+    const listItems = document.querySelectorAll('.delivery-item');
+    listItems.forEach(function(item) {
+        if (item.getAttribute('data-no') === deliveryNo) {
+            item.remove();
+        }
+    });
+    
+    // 如果列表为空，显示空状态提示
+    const remainingItems = document.querySelectorAll('.delivery-item');
+    if (remainingItems.length === 0) {
+        const listContainer = document.querySelector('.list-group.list-group-flush');
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="list-group-item text-center text-muted py-3">
+                    <i class="bi bi-inbox fs-4 d-block mb-1"></i>
+                    <small>暂无待收货</small>
+                </div>
+            `;
+        }
+    }
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('快速收货页面加载完成');
+
+    // 绑定手动输入按钮
+    document.getElementById('searchBtn').addEventListener('click', function() {
+        searchByNo();
+    });
+
+    // 绑定回车键
+    document.getElementById('manualInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchByNo();
+        }
+    });
+
+    // 绑定发货单列表点击
+    document.querySelectorAll('.delivery-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const no = this.getAttribute('data-no');
+            selectDelivery(no);
+        });
+    });
+
+    // 绑定表单提交
+    document.getElementById('receiveForm').addEventListener('submit', submitForm);
+
+    // 绑定重置按钮
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+    // 绑定继续收货按钮
+    document.getElementById('continueBtn').addEventListener('click', function() {
+        resetForm();
+    });
+});
+</script>
+{% endblock %}

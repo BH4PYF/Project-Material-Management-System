@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}用户分组{% endblock %}
+{% block page_title %}用户分组{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-collection-fill"></i> 用户分组</h5>
+    <div class="btn-group">
+        <a href="{% url 'user_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> 返回用户列表
+        </a>
+        <a href="/admin/auth/group/" class="btn btn-outline-primary btn-sm" target="_blank">
+            <i class="bi bi-shield-check"></i> Django管理后台
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 分组列表 -->
+    <div class="col-lg-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-people-fill text-primary"></i> 系统用户组</h6>
+                <span class="badge bg-secondary">共 {{ groups|length }} 个用户组</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">图标</th>
+                            <th>分组名称</th>
+                            <th>分组代码</th>
+                            <th style="width: 100px;">用户数量</th>
+                            <th>权限数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        <tr>
+                            <td class="text-center">
+                                <span class="avatar-circle bg-primary">
+                                    <i class="bi bi-people text-white"></i>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="fw-bold">{{ group.name }}</span>
+                                <br><small class="text-muted">用户组</small>
+                            </td>
+                            <td><code>group_{{ group.id }}</code></td>
+                            <td><span class="badge bg-secondary">{{ group.user_set.count }}</span></td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ group.permissions.count }} 个权限</span></td>
+                            <td>
+                                <a href="/admin/auth/group/{{ group.id }}/change/" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-pencil"></i> 管理后台编辑
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                暂无用户组数据
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 分组详细信息 -->
+<div class="row g-4 mt-4">
+    {% for group in groups %}
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 {% if group.name == '管理层' %}border-danger{% elif group.name == '物资部' %}border-warning{% elif group.name == '材料员' %}border-info{% else %}border-secondary{% endif %} border-opacity-25">
+            <div class="card-header {% if group.name == '管理层' %}bg-danger{% elif group.name == '物资部' %}bg-warning{% elif group.name == '材料员' %}bg-info{% else %}bg-secondary{% endif %} bg-opacity-10 border-0">
+                <h6 class="fw-bold mb-0 {% if group.name == '管理层' %}text-danger{% elif group.name == '物资部' %}text-warning{% elif group.name == '材料员' %}text-info{% else %}text-secondary{% endif %}">
+                    <i class="bi {% if group.name == '管理层' %}bi-shield-fill{% elif group.name == '物资部' %}bi-building{% elif group.name == '材料员' %}bi-person-workspace{% else %}bi-truck{% endif %}"></i> {{ group.name }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">拥有 {{ group.permissions.count }} 个权限</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-sm text-muted">用户数量: {{ group.user_set.count }}</span>
+                    <a href="/admin/auth/group/{{ group.id }}/change/" class="btn btn-outline-primary btn-sm" target="_blank">
+                        <i class="bi bi-arrow-up-right"></i> 管理后台
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

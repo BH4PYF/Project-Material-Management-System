@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}性能监控{% endblock %}
+{% block page_title %}📊 性能监控仪表盘{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- 请求统计 -->
+    <div class="col-md-3">
+        <div class="card shadow-sm border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">最近 1 小时请求</h6>
+                <h2 class="mb-0 text-primary">{{ metrics.requests_last_hour }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">最近 24 小时请求</h6>
+                <h2 class="mb-0 text-success">{{ metrics.requests_last_day }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted">最近 1 小时慢请求</h6>
+                <h2 class="mb-0 text-warning">{{ metrics.slow_requests_last_hour }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">最近 24 小时慢请求</h6>
+                <h2 class="mb-0 text-danger">{{ metrics.slow_requests_last_day }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 平均响应时间 -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-speedometer2"></i> 响应时间统计</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-clock-history fs-3 text-primary me-3"></i>
+                            <div>
+                                <small class="text-muted">平均响应时间</small>
+                                <div class="fs-5 fw-bold">{{ metrics.avg_response_time|floatformat:3 }}s</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% if metrics.slowest_request %}
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-snail fs-3 text-danger me-3"></i>
+                            <div>
+                                <small class="text-muted">最慢请求</small>
+                                <div class="fs-5 fw-bold">{{ metrics.slowest_request.duration|floatformat:3 }}s</div>
+                                <small class="text-muted">{{ metrics.slowest_request.path }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-graph-up fs-3 text-success me-3"></i>
+                            <div>
+                                <small class="text-muted">慢请求总数</small>
+                                <div class="fs-5 fw-bold">{{ total_slow_count }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top 慢路径 -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-list-ul"></i> Top 10 慢路径</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadAPIStats()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="40%">路径</th>
+                                <th>请求次数</th>
+                                <th>平均耗时</th>
+                                <th>最大耗时</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in path_summary %}
+                            <tr>
+                                <td><code>{{ item.path }}</code></td>
+                                <td>
+                                    <span class="badge bg-primary">{{ item.count }}</span>
+                                </td>
+                                <td>
+                                    <span class="text-warning">{{ item.avg_duration|floatformat:3 }}s</span>
+                                </td>
+                                <td>
+                                    <span class="text-danger">{{ item.max_duration|floatformat:3 }}s</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">暂无慢请求记录</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近慢请求详情 -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-journal-text"></i> 最近慢请求详情</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>方法</th>
+                                <th>路径</th>
+                                <th>耗时</th>
+                                <th>状态码</th>
+                                <th>用户</th>
+                                <th>IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="slowRequestsTable">
+                            {% for req in slow_requests %}
+                            <tr>
+                                <td>
+                                    {{ req.timestamp|floatformat:0|to_datetime:"Y-m-d H:i:s" }}
+                                </td>
+                                <td>
+                                    {% if req.method == 'GET' %}
+                                    <span class="badge bg-info">{{ req.method }}</span>
+                                    {% elif req.method == 'POST' %}
+                                    <span class="badge bg-success">{{ req.method }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ req.method }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><code>{{ req.path }}</code></td>
+                                <td>
+                                    <span class="text-danger fw-bold">{{ req.duration|floatformat:3 }}s</span>
+                                </td>
+                                <td>
+                                    {% if req.status_code >= 500 %}
+                                    <span class="badge bg-danger">{{ req.status_code }}</span>
+                                    {% elif req.status_code >= 400 %}
+                                    <span class="badge bg-warning">{{ req.status_code }}</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ req.status_code }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ req.user }}</td>
+                                <td><small>{{ req.ip }}</small></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">暂无慢请求记录</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API 性能统计图表 -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-pie-chart"></i> 状态码分布</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="statusCodeChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> 用户请求分布</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="userChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// 加载 API 统计数据
+function loadAPIStats() {
+    fetch('{% url "api_performance_stats" %}')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API 性能数据:', data);
+            // 可以在这里更新图表
+        })
+        .catch(error => {
+            console.error('加载失败:', error);
+        });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 可以初始化图表
+    console.log('性能监控页面已加载');
+});
+</script>
+{% endblock %}

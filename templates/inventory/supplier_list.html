@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% block title %}供应商档案{% endblock %}
+{% block page_title %}供应商档案{% endblock %}
+{% block content %}
+<style>
+    /* 供应商列表列宽优化 */
+    .table-supplier-list th:nth-child(1),  /* 编号 */
+    .table-supplier-list td:nth-child(1) {
+        width: 90px;
+        min-width: 70px;
+    }
+    .table-supplier-list th:nth-child(2),  /* 名称 */
+    .table-supplier-list td:nth-child(2) {
+        width: 250px;
+        min-width: 200px;
+        max-width: 300px;
+    }
+    .table-supplier-list th:nth-child(3),  /* 联系人 */
+    .table-supplier-list td:nth-child(3) {
+        width: 100px;
+        min-width: 80px;
+    }
+    .table-supplier-list th:nth-child(4),  /* 电话 */
+    .table-supplier-list td:nth-child(4) {
+        width: 130px;
+        min-width: 110px;
+    }
+    .table-supplier-list th:nth-child(5),  /* 主营类型 */
+    .table-supplier-list td:nth-child(5) {
+        width: 150px;
+        min-width: 120px;
+    }
+    .table-supplier-list th:nth-child(6),  /* 信用等级 */
+    .table-supplier-list td:nth-child(6) {
+        width: 90px;
+        min-width: 70px;
+        text-align: center;
+    }
+    .table-supplier-list th:nth-child(7),  /* 累计采购额 */
+    .table-supplier-list td:nth-child(7) {
+        width: 110px;
+        min-width: 90px;
+        text-align: right;
+    }
+    .table-supplier-list th:nth-child(8),  /* 操作 */
+    .table-supplier-list td:nth-child(8) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;  /* 全部居中 */
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-supplier-list td:nth-child(8) .btn {
+        margin-right: 4px;
+    }
+    .table-supplier-list td:nth-child(8) .btn:last-child {
+        margin-right: 0;
+    }
+    
+    /* 创建按钮宽度调整 - 与编辑删除两个按钮宽度一致 */
+    .table-supplier-list tr:first-child td:nth-child(8) .btn {
+        min-width: 70px;  /* 编辑删除按钮总宽度约 70px */
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    
+    /* 创建按钮居中显示 */
+    .table-supplier-list tr:first-child td:nth-child(8) {
+        text-align: center;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-truck"></i> 供应商档案</h5>
+    <div>    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto"><input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="搜索名称/联系人"></div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="main_type" style="min-width: 150px;">
+                <option value="">全部主营类型</option>
+                {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if main_type == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button></div>
+        <div class="col-auto ms-auto">
+            <a href="{% url 'download_import_template' %}?type=supplier" class="btn btn-sm btn-outline-secondary"><i class="bi bi-file-earmark-arrow-down"></i> 导入模板</a>
+            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#importSupplierModal"><i class="bi bi-upload"></i> 批量导入</button>
+        </div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-supplier-list">
+            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>联系人</th><th>电话</th><th>主营类型</th><th>信用等级</th><th>累计采购额</th><th>操作</th></tr></thead>
+            <tbody>
+            <!-- 新增行 -->
+            <form method="post" action="{% url 'supplier_save' %}" class="d-contents" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" value="">
+                <tr class="table-light">
+                    <td><small class="text-muted">(自动生成)</small></td>
+                    <td><input type="text" class="form-control form-control-sm" name="name" id="newSupplierName" placeholder="供应商名称" required onblur="checkSupplierDuplicate()"></td>
+                    <td><input type="text" class="form-control form-control-sm" name="contact" placeholder="联系人"></td>
+                    <td><input type="text" class="form-control form-control-sm" name="phone" placeholder="联系电话"></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="main_type">
+                            <option value="">请选择</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="credit_rating">
+                            <option value="excellent">优秀</option>
+                            <option value="good" selected>良好</option>
+                            <option value="average">一般</option>
+                        </select>
+                    </td>
+                    <td><small class="text-muted">-</small></td>
+                    <td><button type="submit" class="btn btn-sm btn-success" id="newSupplierCreateBtn"><i class="bi bi-plus-lg"></i> 创建</button></td>
+                </tr>
+                <!-- 查重提示 -->
+                <tr id="newSupplierDuplicateCheckResult" style="display: none;">
+                    <td colspan="8">
+                        <div class="alert alert-warning py-1 mb-0 small">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            <span id="newSupplierDuplicateMessage"></span>
+                        </div>
+                    </td>
+                </tr>
+            </form>
+            {% for s in suppliers %}
+            <tr>
+                <td>{{ s.code }}</td><td>{{ s.name }}</td><td>{{ s.contact }}</td><td>{{ s.phone }}</td>
+                <td>{{ s.main_type.name|default:'' }}</td>
+                <td>{% if s.credit_rating == 'excellent' %}<span class="badge bg-success">优秀</span>{% elif s.credit_rating == 'good' %}<span class="badge bg-primary">良好</span>{% else %}<span class="badge bg-secondary">一般</span>{% endif %}</td>
+                <td class="text-primary">{{ s.total_purchase|floatformat:2 }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary edit-btn" data-supplier-id="{{ s.pk }}"><i class="bi bi-pencil"></i></button>
+                    {% if request.user.profile.is_admin %}
+                    <button class="btn btn-sm btn-outline-danger delete-btn" data-delete-url="{% url 'supplier_delete' s.pk %}" data-supplier-name="{{ s.name|escapejs }}"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">暂无供应商数据</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑供应商模态框 -->
+<div class="modal fade" id="supplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'supplier_save' %}" data-ajax
+                  data-success-callback="handleSupplierSaveSuccess">
+                {% csrf_token %}
+                <input type="hidden" name="id" id="sId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="supplierModalTitle">编辑供应商</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">供应商名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="sName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人</label>
+                        <input type="text" class="form-control" id="sContact" name="contact">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">电话</label>
+                        <input type="text" class="form-control" id="sPhone" name="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <input type="text" class="form-control" id="sAddress" name="address">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">主营类型</label>
+                        <select class="form-select" id="sMainType" name="main_type">
+                            <option value="">请选择</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">信用等级</label>
+                        <select class="form-select" id="sCreditRating" name="credit_rating">
+                            <option value="excellent">优秀</option>
+                            <option value="good">良好</option>
+                            <option value="average">一般</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">合作开始日期</label>
+                        <input type="date" class="form-control" id="sStartDate" name="start_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="sRemark" name="remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 批量导入模态框 -->
+<div class="modal fade" id="importSupplierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-upload"></i> 批量导入供应商</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">请先<a href="{% url 'download_import_template' %}?type=supplier">下载导入模板</a>，按模板格式填写数据后上传。重复的供应商（名称相同）将自动跳过。</p>
+                <form id="importSupplierForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="supplier">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                    </div>
+                </form>
+                <div id="importSupplierResult" class="d-none">
+                    <div class="alert alert-info small mb-0" id="importSupplierResultMsg"></div>
+                    <ul class="list-unstyled small text-danger mt-2 mb-0" id="importSupplierErrors"></ul>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-sm btn-info" id="importSupplierBtn" onclick="doImportSupplier()"><i class="bi bi-upload"></i> 开始导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<!-- 供应商查重功能 -->
+<script>
+// 使用全局的 csrftoken（已在 app.js 中定义）
+// 仅当 csrftoken 不存在时才定义（兼容性处理）
+if (typeof csrftoken === 'undefined') {
+    function getCookie(name) {
+        let v = null;
+        if (document.cookie && document.cookie !== '') {
+            document.cookie.split(';').forEach(function(c) {
+                c = c.trim();
+                if (c.startsWith(name + '=')) {
+                    v = decodeURIComponent(c.substring(name.length + 1));
+                }
+            });
+        }
+        return v;
+    }
+    const csrftoken = getCookie('csrftoken');
+}
+
+// 供应商查重检查
+let checkSupplierTimeout = null;
+function checkSupplierDuplicate() {
+    const nameInput = document.getElementById('newSupplierName');
+    const name = nameInput.value.trim();
+    const resultDiv = document.getElementById('newSupplierDuplicateCheckResult');
+    const messageSpan = document.getElementById('newSupplierDuplicateMessage');
+    const createBtn = document.getElementById('newSupplierCreateBtn');
+    
+    if (!name) {
+        resultDiv.style.display = 'none';
+        if (createBtn) createBtn.disabled = false;
+        return;
+    }
+    
+    // 清除之前的定时器
+    if (checkSupplierTimeout) {
+        clearTimeout(checkSupplierTimeout);
+    }
+    
+    // 延迟 500ms 发送请求，避免频繁请求
+    checkSupplierTimeout = setTimeout(function() {
+        const url = '/api/suppliers/check-duplicate/?name=' + encodeURIComponent(name);
+        
+        fetch(url, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    // 供应商已存在
+                    nameInput.classList.add('is-invalid');
+                    nameInput.classList.remove('is-valid');
+                    resultDiv.style.display = 'block';
+                    messageSpan.textContent = '供应商已存在：' + data.message;
+                    if (createBtn) {
+                        createBtn.disabled = true;
+                    }
+                } else {
+                    // 供应商可用
+                    nameInput.classList.remove('is-invalid');
+                    nameInput.classList.add('is-valid');
+                    resultDiv.style.display = 'none';
+                    if (createBtn) {
+                        createBtn.disabled = false;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('查重检查失败:', error);
+            });
+    }, 500);
+}
+
+// 页面加载完成后绑定事件
+document.addEventListener('DOMContentLoaded', function() {
+    // 绑定编辑按钮事件
+    document.querySelectorAll('.edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var supplierId = this.getAttribute('data-supplier-id');
+            editSupplier(supplierId);
+        });
+    });
+    
+    // 绑定删除按钮事件
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var deleteUrl = this.getAttribute('data-delete-url');
+            var supplierName = this.getAttribute('data-supplier-name');
+            confirmDelete(deleteUrl, supplierName);
+        });
+    });
+});
+
+function editSupplier(pk){
+    loadDetail('/api/suppliers/'+pk+'/', function(d){
+        document.getElementById('sId').value=d.id;
+        document.getElementById('sName').value=d.name;
+        document.getElementById('sContact').value=d.contact;
+        document.getElementById('sPhone').value=d.phone;
+        document.getElementById('sAddress').value=d.address;
+        document.getElementById('sMainType').value=d.main_type || '';
+        document.getElementById('sCreditRating').value=d.credit_rating;
+        document.getElementById('sStartDate').value=d.start_date;
+        document.getElementById('sRemark').value=d.remark;
+        document.getElementById('supplierModalTitle').textContent='编辑供应商';
+        new bootstrap.Modal(document.getElementById('supplierModal')).show();
+    });
+}
+function doImportSupplier() {
+    const form = document.getElementById('importSupplierForm');
+    const fileInput = form.querySelector('input[type=file]');
+    if (!fileInput.files.length) { showMsg('请选择文件'); return; }
+    const btn = document.getElementById('importSupplierBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 导入中...';
+    const formData = new FormData(form);
+    fetch('{% url "import_excel" %}', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(data => {
+            const resultDiv = document.getElementById('importSupplierResult');
+            const msgDiv = document.getElementById('importSupplierResultMsg');
+            const errList = document.getElementById('importSupplierErrors');
+            resultDiv.classList.remove('d-none');
+            if (data.success) {
+                msgDiv.className = 'alert alert-success small mb-0';
+                msgDiv.textContent = data.message;
+                errList.innerHTML = '';
+                if (data.errors && data.errors.length) {
+                    data.errors.forEach(e => { const li = document.createElement('li'); li.textContent = e; errList.appendChild(li); });
+                }
+                if (data.created > 0) setTimeout(() => location.reload(), 1500);
+            } else {
+                msgDiv.className = 'alert alert-danger small mb-0';
+                msgDiv.textContent = data.error;
+            }
+        })
+        .catch(() => showMsg('请求失败'))
+        .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> 开始导入'; });
+}
+
+// 处理供应商保存成功的回调函数
+function handleSupplierSaveSuccess(data) {
+    const modalEl = document.getElementById('supplierModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+    showMsg(data.message || '保存成功', 'success');
+    setTimeout(function() {
+        location.reload();
+    }, 1500);
+}
+</script>
+{% endblock %}

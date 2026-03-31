@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}项目采购分析{% endblock %}
+{% block page_title %}项目采购分析{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-folder-check"></i> 项目材料采购分析</h5>
+    <a href="{% url 'report_page' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> 返回报表</a>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="project_id" onchange="this.form.submit()" style="min-width: 320px;">
+                <option value="">请选择项目</option>
+                {% for p in projects %}<option value="{{ p.id }}" {% if project_id == p.id|stringformat:"d" %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>{% endfor %}
+            </select>
+        </div>
+        {% if project %}
+        <div class="col-auto">
+            <a href="{% url 'report_project_cost' %}?project_id={{ project.id }}&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&export=excel" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{% if project %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white"><h6 class="mb-0">项目: {{ project.name }} ({{ project.code }})</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>材料分类</th><th>材料名称</th><th>规格</th><th>单位</th><th>累计用量</th><th>累计成本(元)</th><th>成本占比</th></tr></thead>
+            <tbody>
+            {% for r in report_data %}
+            <tr>
+                <td>{{ r.category }}</td><td>{{ r.name }}</td><td>{{ r.spec }}</td><td>{{ r.unit }}</td>
+                <td>{{ r.quantity|floatformat:2 }}</td>
+                <td class="text-danger fw-bold">{{ r.cost|floatformat:2 }}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-2" style="height:6px"><div class="progress-bar" style="width:{{ r.ratio|floatformat:0 }}%"></div></div>
+                        <small>{{ r.ratio|floatformat:1 }}%</small>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">该项目暂无入库记录</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if report_data %}
+            <tfoot><tr class="table-light"><td colspan="5" class="text-end fw-bold">合计</td><td class="text-danger fw-bold">{{ total_cost|floatformat:2 }}</td><td></td></tr></tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">请选择一个项目查看成本分析</div>
+{% endif %}
+{% endblock %}

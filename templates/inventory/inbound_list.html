@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}入库管理{% endblock %}
+{% block page_title %}入库管理{% endblock %}
+{% block extra_css %}
+<style>
+/* 表格单元格自适应宽度 */
+.table-responsive table {
+    min-width: 100%;
+    table-layout: auto;
+}
+
+/* 单元格样式优化 */
+.table th, .table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+/* 可滚动单元格 */
+.scrollable-cell {
+    max-width: 200px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* 自定义滚动条样式 */
+.scrollable-cell::-webkit-scrollbar {
+    height: 6px;
+}
+
+.scrollable-cell::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.scrollable-cell::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.scrollable-cell::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* 单元格最小宽度 */
+.col-action { min-width: 120px; }
+.col-date { min-width: 100px; }
+.col-code { min-width: 120px; }
+.col-name { min-width: 150px; }
+.col-spec { min-width: 100px; }
+.col-unit { min-width: 60px; }
+.col-qty { min-width: 80px; text-align: right; }
+.col-price { min-width: 90px; text-align: right; }
+.col-total { min-width: 100px; text-align: right; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-box-arrow-in-down"></i> 入库管理</h5>
+    <div>
+        <a href="{% url 'export_excel' %}?type=inbound&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&project={{ project_id|default:''|urlencode }}&material={{ material_id|default:''|urlencode }}&supplier={{ supplier_id|default:''|urlencode }}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
+        {% if request.user.profile.is_admin or request.user.profile.is_material_dept %}        {% endif %}
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <!-- 第一行：日期选择 -->
+        <div class="col-auto"><label class="form-label small mb-0">起始日期</label><input type="date" class="form-control form-control-sm" name="date_from" value="{{ date_from }}"></div>
+        <div class="col-auto"><label class="form-label small mb-0">截止日期</label><input type="date" class="form-control form-control-sm" name="date_to" value="{{ date_to }}"></div>
+        <div class="col-auto ms-auto mt-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button></div>
+        
+        <!-- 第二行：项目、材料、供应商筛选 -->
+        <div class="w-100"></div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">项目选择</label>
+            <select class="form-select form-select-sm" name="project"><option value="">全部</option>{% for p in projects %}<option value="{{ p.id }}" {% if project_id == p.id|stringformat:"d" %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">项目搜索</label>
+            <input type="text" class="form-control form-control-sm" name="project_search" value="{{ project_search }}" placeholder="项目名称/编号">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">材料选择</label>
+            <select class="form-select form-select-sm" name="material"><option value="">全部</option>{% for m in materials %}<option value="{{ m.id }}" {% if material_id == m.id|stringformat:"d" %}selected{% endif %}>{{ m.code }} - {{ m.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">材料搜索</label>
+            <input type="text" class="form-control form-control-sm" name="material_search" value="{{ material_search }}" placeholder="材料名称/规格">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">供应商选择</label>
+            <select class="form-select form-select-sm" name="supplier"><option value="">全部</option>{% for s in suppliers %}<option value="{{ s.id }}" {% if supplier_id == s.id|stringformat:"d" %}selected{% endif %}>{{ s.code }} - {{ s.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">供应商搜索</label>
+            <input type="text" class="form-control form-control-sm" name="supplier_search" value="{{ supplier_search }}" placeholder="供应商名称/联系人">
+        </div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead><tr><th class="col-code">入库单号</th><th class="col-date">日期 <span class="text-danger">*</span></th><th class="col-name">项目 <span class="text-danger">*</span></th><th class="col-spec">项目地址 <span class="text-danger">*</span></th><th class="col-name">材料 <span class="text-danger">*</span></th><th class="col-unit">单位</th><th class="col-spec">规格 <span class="text-danger">*</span></th><th class="col-qty">数量 <span class="text-danger">*</span></th><th class="col-price">单价 <span class="text-danger">*</span></th><th class="col-total">总金额</th><th class="col-name">供应商 <span class="text-danger">*</span></th><th class="col-action">操作</th></tr></thead>
+            <tbody>
+            <!-- 新增行 -->
+            <form method="post" action="{% url 'inbound_save' %}" class="d-contents" id="addForm" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" value="">
+                <tr class="table-light">
+                    <td><small class="text-muted">(自动生成)</small></td>
+                    <td><input type="date" class="form-control form-control-sm" name="date" id="addDate" required></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="project_id" id="addProject" required onchange="onAddProjectChange(this)">
+                            <option value="">请选择</option>
+                            {% for p in projects %}<option value="{{ p.id }}" data-location="{{ p.location|default:'' }}">{{ p.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td><small class="text-muted" id="addLocation">自动获取</small></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="material_id" id="addMaterial" required onchange="onAddMaterialChange(this)">
+                            <option value="">请选择</option>
+                            {% for m in materials %}
+                            <option value="{{ m.id }}" data-spec="{{ m.spec }}" data-price="{{ m.standard_price }}" data-unit="{{ m.unit }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="unit" id="addUnit" required>
+                            <option value="">请选择</option>
+                            <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                            <option>米</option><option>根</option><option>个</option><option>套</option>
+                            <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" name="spec" id="addSpec" placeholder="规格型号" required></td>
+                    <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="quantity" id="addQty" required oninput="calcAddTotal()"></td>
+                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="unit_price" id="addPrice" required oninput="calcAddTotal()"></td>
+                    <td><small class="text-primary fw-bold" id="addTotal">-</small></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="supplier_id" id="addSupplier" required>
+                            <option value="">请选择</option>
+                            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td><button type="submit" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> 创建</button></td>
+                </tr>
+            </form>
+            {% for r in records %}
+            <tr>
+                <td><small>{{ r.no }}</small></td><td>{{ r.date }}</td><td>{{ r.project.name }}</td>
+                <td><small class="text-muted scrollable-cell">{{ r.location }}</small></td>
+                <td>{{ r.material.name }}</td><td class="col-unit">{{ r.material.unit }}</td>
+                <td><small class="text-muted scrollable-cell">{{ r.spec }}</small></td>
+                <td class="col-qty">{{ r.quantity|floatformat:2 }}</td><td class="col-price">{{ r.unit_price|floatformat:2 }}</td>
+                <td class="col-total text-primary fw-bold">{{ r.total_amount|floatformat:2 }}</td>
+                <td>{{ r.supplier.name }}</td>
+                <td class="col-action">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editInbound({{ r.pk }})"><i class="bi bi-pencil"></i></button>
+                    {% if request.user.profile.is_admin or request.user.profile.is_material_dept %}
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{% url 'inbound_delete' r.pk %}', '{{ r.no|escapejs }}')"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="12" class="text-center text-muted py-4">暂无入库记录</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑入库模态框 -->
+<div class="modal fade" id="inboundModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'inbound_save' %}" data-ajax
+                  data-success-callback="handleInboundSaveSuccess">
+                {% csrf_token %}
+                <input type="hidden" name="id" id="inId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inboundModalTitle">编辑入库记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">入库单号</label>
+                            <input type="text" class="form-control" id="inNo" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="inDate" name="date" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">项目 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="inProject" name="project_id" required onchange="onProjectChange(this)">
+                                <option value="">请选择</option>
+                                {% for p in projects %}<option value="{{ p.id }}" data-location="{{ p.location|default:'' }}">{{ p.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">项目地址 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="inLocation" name="location" readonly>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">材料 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="inMaterial" name="material_id" required onchange="onMaterialChange(this)">
+                                <option value="">请选择</option>
+                                {% for m in materials %}
+                                <option value="{{ m.id }}" data-spec="{{ m.spec }}" data-unit="{{ m.unit }}" data-price="{{ m.standard_price }}">{{ m.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">单位 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="inUnit" name="unit" required>
+                                <option value="">请选择</option>
+                                <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                                <option>米</option><option>根</option><option>个</option><option>套</option>
+                                <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">规格型号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="inSpec" name="spec" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">数量 <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" class="form-control" id="inQty" name="quantity" required oninput="calcTotal()">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">单价 <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="inPrice" name="unit_price" required oninput="calcTotal()">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">总金额</label>
+                            <input type="text" class="form-control" id="inTotal" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">供应商 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="inSupplier" name="supplier_id" required>
+                            <option value="">请选择</option>
+                            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">批次号</label>
+                        <input type="text" class="form-control" id="inBatch" name="batch_no">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="inRemark" name="remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+// 新增行相关函数
+function onAddProjectChange(sel){
+    var opt=sel.options[sel.selectedIndex];
+    var location = opt.dataset.location||'';
+    // 自动填充项目地址
+    var locationDisplay = document.getElementById('addLocation');
+    if(location){
+        locationDisplay.textContent = location;
+    } else {
+        locationDisplay.textContent = '-';
+    }
+}
+function onAddMaterialChange(sel){
+    var opt=sel.options[sel.selectedIndex];
+    // 如果规格字段为空，则自动填充材料规格
+    var specInput = document.getElementById('addSpec');
+    var spec = opt.dataset.spec||'';
+    if(!specInput.value && spec){
+        specInput.value = spec;
+    }
+    // 自动填充单位（从材料档案获取默认值）
+    var unitSelect = document.getElementById('addUnit');
+    var unit = opt.dataset.unit||'';
+    if(unit){
+        // 尝试匹配单位选项
+        for(var i=0; i<unitSelect.options.length; i++){
+            if(unitSelect.options[i].value === unit){
+                unitSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    document.getElementById('addPrice').value=opt.dataset.price||'0';
+    calcAddTotal();
+}
+function calcAddTotal(){
+    var q=parseFloat(document.getElementById('addQty').value)||0;
+    var p=parseFloat(document.getElementById('addPrice').value)||0;
+    var total = (q*p).toFixed(2);
+    document.getElementById('addTotal').textContent = total > 0 ? total : '-';
+}
+// 设置默认日期为今天（DOM 加载完成后执行）
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('addDate').value = new Date().toISOString().slice(0,10);
+});
+
+// 编辑模态框相关函数
+function onMaterialChange(sel){
+    var opt=sel.options[sel.selectedIndex];
+    var specInput=document.getElementById('inSpec');
+    // 如果规格为空，则自动填充材料规格
+    if(!specInput.value && opt.dataset.spec){
+        specInput.value=opt.dataset.spec;
+    }
+    // 自动填充单位
+    var unitSelect = document.getElementById('inUnit');
+    var unit = opt.dataset.unit||'';
+    if(unit){
+        for(var i=0; i<unitSelect.options.length; i++){
+            if(unitSelect.options[i].value === unit){
+                unitSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    document.getElementById('inPrice').value=opt.dataset.price||'0';
+    calcTotal();
+}
+function onProjectChange(sel){
+    var opt=sel.options[sel.selectedIndex];
+    var locInput=document.getElementById('inLocation');
+    // 自动填充项目地址（编辑时总是更新）
+    if(opt.dataset.location){
+        locInput.value=opt.dataset.location;
+    }
+}
+function calcTotal(){
+    var q = parseFloat(document.getElementById('inQty').value) || 0;
+    var p = parseFloat(document.getElementById('inPrice').value) || 0;
+    document.getElementById('inTotal').value = (q * p).toFixed(2);
+}
+// 编辑入库记录
+function editInbound(pk) {
+    loadDetail('/api/inbound/'+pk+'/', function(d) {
+        document.getElementById('inId').value = d.id;
+        document.getElementById('inNo').value = d.no;
+        document.getElementById('inDate').value = d.date;
+        document.getElementById('inProject').value = d.project_id;
+        // 触发项目 change 事件以填充地址
+        onProjectChange(document.getElementById('inProject'));
+        document.getElementById('inMaterial').value = d.material_id;
+        // 触发材料 change 事件以填充规格和单位
+        onMaterialChange(document.getElementById('inMaterial'));
+        document.getElementById('inSpec').value = d.spec || '';
+        document.getElementById('inUnit').value = d.unit || '';
+        document.getElementById('inQty').value = d.quantity;
+        document.getElementById('inPrice').value = d.unit_price;
+        calcTotal();
+        document.getElementById('inSupplier').value = d.supplier_id;
+        document.getElementById('inBatch').value = d.batch_no || '';
+        document.getElementById('inLocation').value = d.location || '';
+        document.getElementById('inRemark').value = d.remark || '';
+        document.getElementById('inboundModalTitle').textContent = '编辑入库记录';
+        new bootstrap.Modal(document.getElementById('inboundModal')).show();
+    });
+}
+
+// 获取 CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 处理入库记录保存成功的回调函数
+function handleInboundSaveSuccess(data) {
+    const modalEl = document.getElementById('inboundModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+    showMsg(data.message || '保存成功', 'success');
+    setTimeout(function() {
+        location.reload();
+    }, 1500);
+}
+</script>
+{% endblock %}

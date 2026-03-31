@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}采购计划{% endblock %}
+{% block page_title %}采购计划{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-cart-plus"></i> 采购计划</h5>
+    <div>
+        <a href="{% url 'export_purchase_plans' %}?status={{ status }}&project={{ project_id }}&q={{ q }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-download"></i> 批量导出
+        </a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="搜索计划编号/材料">
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="project">
+                <option value="">全部项目</option>
+                {% for p in projects %}<option value="{{ p.id }}" {% if project_id == p.id|stringformat:"d" %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="status">
+                <option value="">全部状态</option>
+                <option value="pending" {% if status == "pending" %}selected{% endif %}>审批中</option>
+                <option value="purchasing" {% if status == "purchasing" %}selected{% endif %}>采购中</option>
+                <option value="shipped" {% if status == "shipped" %}selected{% endif %}>已发货</option>
+                <option value="received" {% if status == "received" %}selected{% endif %}>已入库</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button>
+        </div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>计划编号</th>
+                    <th>项目 <span class="text-danger">*</span></th>
+                    <th>材料 <span class="text-danger">*</span></th>
+                    <th>单位</th>
+                    <th>规格 <span class="text-danger">*</span></th>
+                    <th>数量 <span class="text-danger">*</span></th>
+                    <th>供应商</th>
+                    <th>预计金额</th>
+                    <th>计划日期</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            <!-- 新增行 -->
+            <form method="post" action="{% url 'purchase_plan_save' %}" class="d-contents" id="addForm" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" value="">
+                <tr class="table-light">
+                    <td><small class="text-muted">(自动生成)</small></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="project_id" id="addProject" required>
+                            <option value="">请选择</option>
+                            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="material_id" id="addMaterial" required onchange="onAddMaterialChange(this)">
+                            <option value="">请选择</option>
+                            {% for m in materials %}
+                            <option value="{{ m.id }}" data-unit="{{ m.unit }}" data-price="{{ m.standard_price }}" data-spec="{{ m.spec }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="unit" id="addUnit" required>
+                            <option value="">请选择</option>
+                            <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                            <option>米</option><option>根</option><option>个</option><option>套</option>
+                            <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" name="spec" id="addSpec" placeholder="规格型号" required></td>
+                    <td>
+                        <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="quantity" id="addQty" required oninput="calcAddTotal()">
+                        <input type="hidden" name="unit_price" id="addUnitPrice" value="0">
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="supplier_id" id="addSupplier">
+                            <option value="">可不选</option>
+                            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td><small class="text-primary fw-bold" id="addTotal">-</small></td>
+                    <td><input type="date" class="form-control form-control-sm" name="planned_date" id="addDate"></td>
+                    <td>
+
+                    </td>
+                    <td><button type="submit" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> 创建</button></td>
+                </tr>
+            </form>
+            {% for plan in plans %}
+            <tr>
+                <td><small>{{ plan.no }}</small></td>
+                <td>{{ plan.project.name }}</td>
+                <td>{{ plan.material.name }}</td>
+                <td>{{ plan.material.unit|default:'-' }}</td>
+                <td><small class="text-muted scrollable-cell">{{ plan.spec|default:'-' }}</small></td>
+                <td>{{ plan.quantity|floatformat:2 }} {{ plan.material.unit|default:'' }}</td>
+                <td>{{ plan.supplier.name|default:'-' }}</td>
+                <td class="text-primary fw-bold">{{ plan.total_amount|floatformat:2 }}</td>
+                <td>{{ plan.planned_date|default:'-' }}</td>
+                <td>
+                    {% if plan.status == 'pending' %}<span class="badge bg-warning">审批中</span>
+                    {% elif plan.status == 'purchasing' %}<span class="badge bg-primary">采购中</span>
+                    {% elif plan.status == 'shipped' %}<span class="badge bg-info">已发货</span>
+                    {% elif plan.status == 'received' %}<span class="badge bg-success">已入库</span>{% endif %}
+                </td>
+                <td>
+                    {% if plan.status != 'received' %}
+                    <button class="btn btn-sm btn-outline-primary" onclick="editPlan({{ plan.pk }})"><i class="bi bi-pencil"></i></button>
+                    {% endif %}
+                    {% if plan.status == 'pending' and request.user.profile.is_admin or plan.status == 'pending' and request.user.profile.is_management or plan.status == 'pending' and request.user.profile.is_material_dept %}
+                    <button class="btn btn-sm btn-outline-success" onclick="approvePlan('{% url 'purchase_plan_approve' plan.pk %}', {{ plan.supplier_id|default:'null' }})" title="审批通过"><i class="bi bi-check-lg"></i> 审批</button>
+                    {% endif %}
+                    {% if request.user.profile.is_admin or request.user.profile.is_material_dept %}
+                    {% if plan.status != 'shipped' and plan.status != 'received' %}
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{% url 'purchase_plan_delete' plan.pk %}', '{{ plan.no|escapejs }}')"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="11" class="text-center text-muted py-4">暂无采购计划</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- 编辑采购计划模态框 -->
+<div class="modal fade" id="planModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'purchase_plan_save' %}" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" id="planId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="planModalTitle">编辑采购计划</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">所属项目 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="project_id" id="planProject" required>
+                                <option value="">请选择</option>
+                                {% for p in projects %}<option value="{{ p.id }}">{{ p.code }} - {{ p.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">材料 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="material_id" id="planMaterial" required onchange="onMaterialChange(this)">
+                                <option value="">请选择</option>
+                                {% for m in materials %}
+                                <option value="{{ m.id }}" data-unit="{{ m.unit }}" data-price="{{ m.standard_price }}">{{ m.code }} - {{ m.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-3">
+                            <label class="form-label">采购数量 <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" class="form-control" name="quantity" id="planQty" required oninput="calcTotal()">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">单位 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="unit" id="planUnit" required>
+                                <option value="">请选择</option>
+                                <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                                <option>米</option><option>根</option><option>个</option><option>套</option>
+                                <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                            </select>
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">预计单价 (元)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="unit_price" id="planPrice" value="0" oninput="calcTotal()">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">预计金额 (元)</label>
+                            <input type="text" class="form-control" id="planTotal" disabled readonly>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label">规格型号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="spec" id="planSpec" placeholder="请输入规格型号" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-3">
+                            <label class="form-label">计划采购日期</label>
+                            <input type="date" class="form-control" name="planned_date" id="planDate">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">供应商</label>
+                            <select class="form-select" name="supplier_id" id="planSupplier">
+                                <option value="">请选择供应商</option>
+                                {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                            </select>
+                            <div class="invalid-feedback">审批时请选择供应商</div>
+                        </div>
+
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" name="remark" id="planRemark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 新增行相关函数
+function onAddMaterialChange(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    // 自动填充单位（从材料档案获取默认值）
+    var unitSelect = document.getElementById('addUnit');
+    var unit = opt.dataset.unit || '';
+    if(unit){
+        for(var i=0; i<unitSelect.options.length; i++){
+            if(unitSelect.options[i].value === unit){
+                unitSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    // 自动填充规格（可编辑）
+    var specInput = document.getElementById('addSpec');
+    var spec = opt.dataset.spec || '';
+    if (!specInput.value && spec) {
+        specInput.value = spec;
+    }
+    // 自动填充预计单价
+    var price = opt.dataset.price || '0';
+    document.getElementById('addUnitPrice').value = price;
+    calcAddTotal();
+}
+function calcAddTotal() {
+    var qty = parseFloat(document.getElementById('addQty').value) || 0;
+    var price = parseFloat(document.getElementById('addUnitPrice').value) || 0;
+    var total = (qty * price).toFixed(2);
+    document.getElementById('addTotal').textContent = total > 0 ? total : '-';
+}
+
+// 编辑模态框相关函数
+function onMaterialChange(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    // 自动填充单位（从材料档案获取默认值）
+    var unitSelect = document.getElementById('planUnit');
+    var unit = opt.dataset.unit || '';
+    if(unit){
+        // 尝试匹配单位选项
+        for(var i=0; i<unitSelect.options.length; i++){
+            if(unitSelect.options[i].value === unit){
+                unitSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    document.getElementById('planPrice').value = opt.dataset.price || '0';
+    // 自动填充规格（可编辑）
+    var specInput = document.getElementById('planSpec');
+    var spec = opt.dataset.spec || '';
+    if (!specInput.value && spec) {
+        specInput.value = spec;
+    }
+    calcTotal();
+}
+function calcTotal() {
+    var q = parseFloat(document.getElementById('planQty').value) || 0;
+    var p = parseFloat(document.getElementById('planPrice').value) || 0;
+    document.getElementById('planTotal').value = (q * p).toFixed(2);
+}
+function editPlan(pk) {
+    loadDetail('/api/purchase-plans/' + pk + '/', function(d) {
+        document.getElementById('planId').value = d.id;
+        document.getElementById('planProject').value = d.project_id;
+        document.getElementById('planMaterial').value = d.material_id;
+        onMaterialChange(document.getElementById('planMaterial'));
+        document.getElementById('planQty').value = d.quantity;
+        document.getElementById('planPrice').value = d.unit_price;
+        calcTotal();
+        document.getElementById('planDate').value = d.planned_date;
+        document.getElementById('planSupplier').value = d.supplier_id || '';
+
+        document.getElementById('planSpec').value = d.spec || '';
+        document.getElementById('planRemark').value = d.remark || '';
+        document.getElementById('planModalTitle').textContent = '编辑采购计划';
+        new bootstrap.Modal(document.getElementById('planModal')).show();
+    });
+}
+
+
+
+// 供应商选择变化时清除校验提示
+document.addEventListener('DOMContentLoaded', function() {
+    var supplierSel = document.getElementById('planSupplier');
+    if (supplierSel) {
+        supplierSel.addEventListener('change', function() {
+            if (this.value) this.classList.remove('is-invalid');
+        });
+    }
+});
+
+// 审批采购计划：先校验供应商，再调用审批接口
+function approvePlan(url, supplierId) {
+    if (!supplierId) {
+        showMsg('请选择供应商', 'warning');
+        return;
+    }
+    approveAction(url, 'approve');
+}
+
+// 获取 CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

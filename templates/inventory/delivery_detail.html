@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}发货单详情{% endblock %}
+{% block page_title %}发货单详情{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-truck"></i> 发货单 {{ delivery.no }}</h5>
+    <a href="{% url 'delivery_list' %}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回</a>
+</div>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">基本信息</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td width="120"><strong>发货单号：</strong></td>
+                        <td><code>{{ delivery.no }}</code></td>
+                        <td width="120"><strong>状态：</strong></td>
+                        <td>
+                            {% if delivery.status == 'pending' %}<span class="badge bg-warning">待发货</span>
+                            {% elif delivery.status == 'shipped' %}<span class="badge bg-primary">已发货</span>
+                            {% else %}<span class="badge bg-success">已收货</span>{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>采购计划：</strong></td>
+                        <td>{{ delivery.purchase_plan.no }}</td>
+                        <td><strong>项目：</strong></td>
+                        <td>{{ delivery.purchase_plan.project.name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>材料：</strong></td>
+                        <td>{{ delivery.purchase_plan.material.name }} ({{ delivery.purchase_plan.material.spec|default:'-' }})</td>
+                        <td><strong>供应商：</strong></td>
+                        <td>{{ delivery.supplier.name }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">发货信息</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td width="120"><strong>实际数量：</strong></td>
+                        <td>{{ delivery.actual_quantity|floatformat:2 }} {{ delivery.purchase_plan.material.unit }}</td>
+                        <td width="120"><strong>实际单价：</strong></td>
+                        <td>{{ delivery.actual_unit_price|floatformat:2 }} 元</td>
+                    </tr>
+                    <tr>
+                        <td><strong>实际金额：</strong></td>
+                        <td class="text-primary fw-bold">{{ delivery.actual_total_amount|floatformat:2 }} 元</td>
+                        <td><strong>送货方式：</strong></td>
+                        <td>
+                            {% if delivery.shipping_method == 'special' %}
+                                <span class="badge bg-info">专车</span>
+                            {% else %}
+                                <span class="badge bg-secondary">物流</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if delivery.shipping_method == 'special' %}
+                    <tr>
+                        <td><strong>车牌号：</strong></td>
+                        <td>{{ delivery.plate_number|default:'-' }}</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td><strong>运单号：</strong></td>
+                        <td>{{ delivery.tracking_no|default:'-' }}</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>创建时间：</strong></td>
+                        <td>{{ delivery.create_time|date:'Y-m-d H:i:s' }}</td>
+                        <td><strong>发货时间：</strong></td>
+                        <td>{% if delivery.ship_time %}{{ delivery.ship_time|date:'Y-m-d H:i:s' }}{% else %}-{% endif %}</td>
+                    </tr>
+                    {% if delivery.remark %}
+                    <tr>
+                        <td><strong>备注：</strong></td>
+                        <td colspan="3">{{ delivery.remark }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        {% if request.user.profile.is_supplier and delivery.status == 'pending' and request.user.profile.supplier_info_id == delivery.supplier_id %}
+        <div class="card shadow-sm mt-3">
+            <div class="card-body text-center">
+                <form method="post" action="{% url 'delivery_confirm_ship' delivery.pk %}" onsubmit="return confirm('确认发货？发货后采购计划状态将变为"发货中"')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success w-100"><i class="bi bi-check-lg"></i> 确认发货</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

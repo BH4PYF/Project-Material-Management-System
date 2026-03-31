@@ -1,0 +1,52 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# 虚拟环境
+venv/
+env/
+
+# 数据库
+*.sqlite3
+*.sqlite3-journal
+
+# 环境变量
+.env
+
+# 日志
+logs/*.log
+!logs/.gitkeep
+
+# 备份
+backups/
+
+# 静态文件
+staticfiles/
+
+# 测试覆盖率报告
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+*.py,cover
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 媒体文件（运行时生成）
+media/
+
+# 项目特定
+*.tar.gz
+*.zip

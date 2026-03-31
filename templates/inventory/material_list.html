@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}材料档案{% endblock %}
+{% block page_title %}材料档案{% endblock %}
+{% block content %}
+<style>
+    /* 材料列表列宽优化 */
+    .table-material-list th:nth-child(1),  /* 编号 */
+    .table-material-list td:nth-child(1) {
+        width: 90px;
+        min-width: 70px;
+    }
+    .table-material-list th:nth-child(2),  /* 名称 */
+    .table-material-list td:nth-child(2) {
+        width: 200px;
+        min-width: 150px;
+        max-width: 250px;
+    }
+    .table-material-list th:nth-child(3),  /* 分类 */
+    .table-material-list td:nth-child(3) {
+        width: 150px;
+        min-width: 120px;
+    }
+    .table-material-list th:nth-child(4),  /* 规格 */
+    .table-material-list td:nth-child(4) {
+        width: 180px;
+        min-width: 150px;
+    }
+    .table-material-list th:nth-child(5),  /* 单位 */
+    .table-material-list td:nth-child(5) {
+        width: 70px;
+        min-width: 60px;
+        text-align: center;
+    }
+    .table-material-list th:nth-child(6),  /* 标准单价 */
+    .table-material-list td:nth-child(6) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-material-list th:nth-child(7),  /* 累计入库量 */
+    .table-material-list td:nth-child(7) {
+        width: 110px;
+        min-width: 90px;
+        text-align: right;
+    }
+    .table-material-list th:nth-child(8),  /* 加权成本 */
+    .table-material-list td:nth-child(8) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-material-list th:nth-child(9),  /* 操作 */
+    .table-material-list td:nth-child(9) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;  /* 全部居中 */
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-material-list td:nth-child(9) .btn {
+        margin-right: 4px;
+    }
+    .table-material-list td:nth-child(9) .btn:last-child {
+        margin-right: 0;
+    }
+    
+    /* 创建按钮宽度调整 - 与编辑删除两个按钮宽度一致 */
+    .table-material-list tr:first-child td:nth-child(9) .btn {
+        min-width: 70px;  /* 编辑删除按钮总宽度约 70px */
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    
+    /* 创建按钮居中显示 */
+    .table-material-list tr:first-child td:nth-child(9) {
+        text-align: center;
+    }
+    
+    /* 下拉选择器宽度统一 */
+    .table-material-list select.form-select-sm,
+    .filter-bar select.form-select-sm {
+        min-width: 150px !important;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-box-seam"></i> 材料档案</h5>
+    <div>    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto"><input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="搜索编号/名称/规格"></div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="category">
+                <option value="">全部分类</option>
+                {% for c in categories %}<option value="{{ c.id }}" {% if cat_id == c.id|stringformat:"d" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button></div>
+        <div class="col-auto ms-auto">
+            <a href="{% url 'download_import_template' %}?type=material" class="btn btn-sm btn-outline-secondary"><i class="bi bi-file-earmark-arrow-down"></i> 导入模板</a>
+            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> 批量导入</button>
+            <a href="{% url 'export_excel' %}?type=inventory" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
+        </div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-material-list">
+            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>分类 <span class="text-danger">*</span></th><th>规格</th><th>单位 <span class="text-danger">*</span></th><th>标准单价</th><th>累计入库量</th><th>加权成本</th><th>操作</th></tr></thead>
+            <tbody>
+            <!-- 新增行 -->
+            <form method="post" action="{% url 'material_save' %}" class="d-contents" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" value="">
+                <tr class="table-light">
+                    <td><small class="text-muted">(自动生成)</small></td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" name="name" id="newMaterialName" placeholder="材料名称" required onblur="checkMaterialDuplicate()">
+                        <div id="materialCheckResult" class="invalid-feedback" style="display: none;"></div>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="category_id" id="newMaterialCategory" required>
+                            <option value="">请选择</option>
+                            {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" name="spec" id="newMaterialSpec" placeholder="规格" onblur="checkMaterialDuplicate()"></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="unit" id="newMaterialUnit" required>
+                            <option value="">请选择</option>
+                            <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                            <option>米</option><option>根</option><option>个</option><option>套</option>
+                            <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                        </select>
+                    </td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="standard_price" value="0" placeholder="单价"></td>
+                    <td></td>
+                    <td></td>
+                    <td><button type="submit" class="btn btn-sm btn-success" id="createMaterialBtn"><i class="bi bi-plus-lg"></i> 创建</button></td>
+                </tr>
+            </form>
+            {% for d in material_data %}
+            <tr>
+                <td>{{ d.obj.code }}</td>
+                <td>{{ d.obj.name }}</td>
+                <td>{{ d.obj.category.name }}</td>
+                <td>{{ d.obj.spec|default:'-' }}</td>
+                <td>{{ d.obj.unit }}</td>
+                <td>{{ d.obj.standard_price|floatformat:2 }}</td>
+                <td class="stock-{{ d.status_key }}">{{ d.stock|floatformat:2 }}</td>
+                <td>{{ d.avg_cost|floatformat:2 }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary btn-edit-material" data-id="{{ d.obj.pk }}"><i class="bi bi-pencil"></i></button>
+                    {% if request.user.profile.is_admin %}
+                    <button class="btn btn-sm btn-outline-danger btn-delete-material" data-url="{% url 'material_delete' d.obj.pk %}" data-name="{{ d.obj.name|escapejs }}"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4">暂无材料数据</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑材料模态框 -->
+<div class="modal fade" id="materialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'material_save' %}" data-ajax>
+                {% csrf_token %}
+                <input type="hidden" name="id" id="mId">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑材料</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">材料名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="mName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">材料分类 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="mCategory" name="category_id" required>
+                            <option value="">请选择</option>
+                            {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">规格型号</label>
+                        <input type="text" class="form-control" id="mSpec" name="spec">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">计量单位 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="mUnit" name="unit" required>
+                            <option value="">请选择</option>
+                            <option>吨</option><option>千克</option><option>立方米</option><option>平方米</option>
+                            <option>米</option><option>根</option><option>个</option><option>套</option>
+                            <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">标准单价</label>
+                        <input type="number" step="0.01" class="form-control" id="mPrice" name="standard_price" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 批量导入模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-upload"></i> 批量导入材料</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">请先<a href="{% url 'download_import_template' %}?type=material">下载导入模板</a>，按模板格式填写数据后上传。重复的材料（名称+规格相同）将自动跳过。</p>
+                <form id="importForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="material">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                    </div>
+                </form>
+                <div id="importResult" class="d-none">
+                    <div class="alert alert-info small mb-0" id="importResultMsg"></div>
+                    <ul class="list-unstyled small text-danger mt-2 mb-0" id="importErrors"></ul>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-sm btn-info" id="importBtn" onclick="doImport()"><i class="bi bi-upload"></i> 开始导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// 材料查重检查（组合字段：名称 + 规格）
+let materialCheckTimer = null;
+function checkMaterialDuplicate() {
+    const nameInput = document.getElementById('newMaterialName');
+    const specInput = document.getElementById('newMaterialSpec');
+    const resultDiv = document.getElementById('materialCheckResult');
+    const createBtn = document.getElementById('createMaterialBtn');
+    
+    const name = nameInput ? nameInput.value.trim() : '';
+    const spec = specInput ? specInput.value.trim() : '';
+    
+    // 如果名称为空，不进行查重
+    if (!name) {
+        return;
+    }
+    
+    // 清除之前的定时器
+    if (materialCheckTimer) {
+        clearTimeout(materialCheckTimer);
+    }
+    
+    // 延迟发送请求，避免频繁请求
+    materialCheckTimer = setTimeout(function() {
+        const url = `/api/materials/check-duplicate/?name=${encodeURIComponent(name)}&spec=${encodeURIComponent(spec)}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    // 材料已存在
+                    nameInput.classList.add('is-invalid');
+                    nameInput.classList.remove('is-valid');
+                    resultDiv.style.display = 'block';
+                    resultDiv.textContent = '材料已存在：' + data.message;
+                    if (createBtn) {
+                        createBtn.disabled = true;
+                    }
+                } else {
+                    // 材料可用
+                    nameInput.classList.remove('is-invalid');
+                    nameInput.classList.add('is-valid');
+                    resultDiv.style.display = 'none';
+                    if (createBtn) {
+                        createBtn.disabled = false;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('查重检查失败:', error);
+            });
+    }, 500); // 500ms 延迟
+}
+
+// 编辑材料按钮事件委托
+document.addEventListener('DOMContentLoaded', function() {
+    // 编辑按钮
+    document.querySelectorAll('.btn-edit-material').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            editMaterial(id);
+        });
+    });
+    
+    // 删除按钮
+    document.querySelectorAll('.btn-delete-material').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            const name = this.getAttribute('data-name');
+            confirmDelete(url, name);
+        });
+    });
+});
+
+function editMaterial(pk) {
+    loadDetail('/api/materials/' + pk + '/', function(d) {
+        document.getElementById('mId').value = d.id;
+        document.getElementById('mName').value = d.name;
+        document.getElementById('mCategory').value = d.category_id;
+        document.getElementById('mUnit').value = d.unit;
+        document.getElementById('mSpec').value = d.spec;
+        document.getElementById('mPrice').value = d.standard_price;
+        new bootstrap.Modal(document.getElementById('materialModal')).show();
+    });
+}
+function doImport() {
+    const form = document.getElementById('importForm');
+    const fileInput = form.querySelector('input[type=file]');
+    if (!fileInput.files.length) { showMsg('请选择文件'); return; }
+    const btn = document.getElementById('importBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 导入中...';
+    const formData = new FormData(form);
+    fetch('{% url "import_excel" %}', {method: 'POST', body: formData})
+        .then(r => r.json())
+        .then(data => {
+            const resultDiv = document.getElementById('importResult');
+            const msgDiv = document.getElementById('importResultMsg');
+            const errList = document.getElementById('importErrors');
+            resultDiv.classList.remove('d-none');
+            if (data.success) {
+                msgDiv.className = 'alert alert-success small mb-0';
+                msgDiv.textContent = data.message;
+                errList.innerHTML = '';
+                if (data.errors && data.errors.length) {
+                    data.errors.forEach(e => { const li = document.createElement('li'); li.textContent = e; errList.appendChild(li); });
+                }
+                if (data.created > 0) setTimeout(() => location.reload(), 1500);
+            } else {
+                msgDiv.className = 'alert alert-danger small mb-0';
+                msgDiv.textContent = data.error;
+            }
+        })
+        .catch(() => showMsg('请求失败'))
+        .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> 开始导入'; });
+}
+
+// 处理材料保存成功的回调函数
+function handleMaterialSaveSuccess(data) {
+    // 关闭模态框
+    const modalEl = document.getElementById('materialModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+    
+    // 显示成功消息（使用弹框）
+    showMsg(data.message || '保存成功', 'success');
+    
+    // 延迟刷新页面以显示新数据
+    setTimeout(function() {
+        location.reload();
+    }, 1500);
+}
+</script>
+{% endblock %}

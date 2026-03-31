@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}编辑发货单{% endblock %}
+{% block page_title %}编辑发货单{% endblock %}
+{% block extra_js %}
+<script>
+function calcTotal() {
+    var qty = parseFloat(document.getElementById('actual_quantity').value) || 0;
+    var price = parseFloat(document.getElementById('actual_unit_price').value) || 0;
+    var total = (qty * price).toFixed(2);
+    document.getElementById('total_amount').textContent = total > 0 ? total : '-';
+}
+function onShippingChange(sel) {
+    var plateDiv = document.getElementById('plate_number_div');
+    var trackingDiv = document.getElementById('tracking_no_div');
+    if (sel.value === 'special') {
+        plateDiv.style.display = 'block';
+        trackingDiv.style.display = 'none';
+    } else {
+        plateDiv.style.display = 'none';
+        trackingDiv.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h5><i class="bi bi-pencil"></i> 编辑发货单</h5>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" action="{% url 'delivery_edit' delivery.pk %}" data-ajax>
+            {% csrf_token %}
+            <input type="hidden" name="purchase_plan_id" value="{{ delivery.purchase_plan.id }}">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="no">发货单号</label>
+                        <input type="text" class="form-control" value="{{ delivery.no }}" disabled>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label for="purchase_plan_no">采购计划号</label>
+                        <input type="text" class="form-control" value="{{ delivery.purchase_plan.no }}" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="project">项目</label>
+                        <input type="text" class="form-control" value="{{ delivery.purchase_plan.project.name }}" disabled>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="material">材料</label>
+                        <input type="text" class="form-control" value="{{ delivery.purchase_plan.material.name }}" disabled>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="spec">规格型号</label>
+                        <input type="text" class="form-control" value="{{ delivery.purchase_plan.material.spec }}" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="actual_quantity">发货数量 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0.01" id="actual_quantity" name="actual_quantity" 
+                                   class="form-control" value="{{ delivery.actual_quantity }}" 
+                                   required oninput="calcTotal()">
+                            <span class="input-group-text">{{ delivery.purchase_plan.material.unit }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="actual_unit_price">实际单价 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" step="0.01" min="0" id="actual_unit_price" name="actual_unit_price" 
+                                   class="form-control" value="{{ delivery.actual_unit_price }}" 
+                                   required oninput="calcTotal()">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group mb-3">
+                        <label for="total_amount">总金额</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="text" class="form-control" id="total_amount" 
+                                   value="{{ delivery.actual_total_amount|floatformat:2 }}" disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="shipping_method">送货方式</label>
+                <select id="shipping_method" name="shipping_method" class="form-select" onchange="onShippingChange(this)">
+                    <option value="special" {% if delivery.shipping_method == 'special' %}selected{% endif %}>专车</option>
+                    <option value="logistics" {% if delivery.shipping_method == 'logistics' %}selected{% endif %}>物流</option>
+                </select>
+            </div>
+
+            <div id="plate_number_div" {% if delivery.shipping_method != 'special' %}style="display: none;"{% endif %} class="form-group mb-3">
+                <label for="plate_number">车牌号</label>
+                <input type="text" id="plate_number" name="plate_number" class="form-control" 
+                       value="{{ delivery.plate_number }}">
+            </div>
+
+            <div id="tracking_no_div" {% if delivery.shipping_method == 'special' %}style="display: none;"{% endif %} class="form-group mb-3">
+                <label for="tracking_no">运单号</label>
+                <input type="text" id="tracking_no" name="tracking_no" class="form-control" 
+                       value="{{ delivery.tracking_no }}">
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="remark">备注</label>
+                <textarea id="remark" name="remark" class="form-control" rows="3">{{ delivery.remark }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'delivery_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 取消
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> 保存
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
