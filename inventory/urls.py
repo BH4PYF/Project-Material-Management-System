@@ -97,4 +97,6 @@ urlpatterns = [
     path('api/settings/save-login-security/', views.save_login_security_settings, name='save_login_security_settings'),
     path('api/settings/users/', views.settings_users_api, name='settings_users_api'),
     path('api/settings/logs/', views.settings_logs_api, name='settings_logs_api'),
+    path('settings/clear-all-data/', views.clear_all_data, name='clear_all_data'),
+    path('settings/init-categories/', views.init_categories, name='init_categories'),
 ]

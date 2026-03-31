@@ -40,7 +40,7 @@ class ExportTaskTestBase(TestCase):
             name='测试供应商', code='SUP_T', contact='张三', phone='13800138000',
         )
         cls.project = Project.objects.create(
-            name='测试项目', code='PRJ_T', location='工地A',
+            name='测试项目', code='PRJ_T'
         )
 
         cls.inbound = InboundRecord.objects.create(
@@ -48,7 +48,7 @@ class ExportTaskTestBase(TestCase):
             quantity=Decimal('50'), unit_price=Decimal('100'),
             supplier=cls.supplier, project=cls.project,
             operator=cls.user, date='2026-03-22',
-            location='工地A', spec='Φ25',
+            spec='Φ25',
         )
 
         cls.plan = PurchasePlan.objects.create(

@@ -57,10 +57,20 @@ def purchase_plan_save(request):
     if request.method == 'POST':
         pk = request.POST.get('id')
         if pk:
-            obj = get_object_or_404(PurchasePlan, pk=pk)
-            # 防止编辑已入库的采购计划
-            if obj.status == PurchasePlan.STATUS_RECEIVED:
-                return JsonResponse({'success': False, 'message': '已入库的采购计划不可编辑'}, status=400)
+            # 编辑现有采购计划
+            try:
+                obj = PurchasePlan.objects.get(pk=pk)
+            except PurchasePlan.DoesNotExist:
+                return JsonResponse({'success': False, 'message': '采购计划不存在'}, status=404)
+            
+            # 只有审批中和采购中的采购计划可以编辑
+            if obj.status not in [PurchasePlan.STATUS_PENDING, PurchasePlan.STATUS_PURCHASING]:
+                status_display = obj.get_status_display()
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'当前状态为"{status_display}"的采购计划不可编辑，只有审批中或采购中的采购计划可以修改'
+                }, status=400)
+            
             action = 'update'
         else:
             obj = PurchasePlan()
@@ -69,15 +79,19 @@ def purchase_plan_save(request):
 
         project_id = request.POST.get('project_id')
         material_id = request.POST.get('material_id')
+        supplier_id = request.POST.get('supplier_id', '').strip()
         err = validate_required_fields(request.POST, {
             'project_id': '请选择所属项目',
             'material_id': '请选择材料',
             'spec': '请填写规格型号',
+            'supplier_id': '请选择供应商',
+            'planned_date': '请选择计划采购日期',
         })
         if err:
             return JsonResponse({'error': err}, status=400)
         obj.project_id = project_id
         obj.material_id = material_id
+        obj.supplier_id = supplier_id
         obj.spec = request.POST.get('spec', '').strip()
         quantity, err = parse_positive_decimal(request.POST.get('quantity'), '采购数量')
         if err:
@@ -101,15 +115,6 @@ def purchase_plan_save(request):
         obj.status = status
         obj.remark = request.POST.get('remark', '')
 
-        # 供应商处理：创建时可不选，审批（非 pending）时必须选择
-        supplier_id = request.POST.get('supplier_id', '').strip()
-        if supplier_id:
-            obj.supplier_id = supplier_id
-        else:
-            obj.supplier_id = None
-        if status != PurchasePlan.STATUS_PENDING and not obj.supplier_id:
-            return JsonResponse({'error': '请选择供应商'}, status=400)
-
         with transaction.atomic():
             if action == 'create':
                 obj.no = generate_no('PP', PurchasePlan)
@@ -121,16 +126,16 @@ def purchase_plan_save(request):
     return redirect('purchase_plan_list')
 
 
-@role_required('admin', 'material_dept')
+@role_required('admin', 'management')
 @require_POST
 def purchase_plan_delete(request, pk):
-    """删除采购计划（软删除）"""
+    """删除采购计划（硬删除）"""
     obj = get_object_or_404(PurchasePlan, pk=pk)
     
     if request.method == 'POST':
-        # 防止删除已发货或已入库的采购计划
-        if obj.status == PurchasePlan.STATUS_SHIPPED or obj.status == PurchasePlan.STATUS_RECEIVED:
-            return JsonResponse({'success': False, 'message': '已发货或已入库的采购计划不能删除'}, status=400)
+        # 只允许删除审批中和采购中的采购计划
+        if obj.status not in [PurchasePlan.STATUS_PENDING, PurchasePlan.STATUS_PURCHASING]:
+            return JsonResponse({'success': False, 'message': '只有审批中和采购中的采购计划可以删除'}, status=400)
         
         no = obj.no
         obj.hard_delete()
@@ -194,7 +199,7 @@ def export_purchase_plans(request):
     return make_excel_response(wb, filename)
 
 
-@role_required('admin', 'management', 'material_dept')
+@role_required('admin', 'management')
 @require_POST
 def purchase_plan_approve(request, pk):
     """审批采购计划：从审批中变为采购中"""

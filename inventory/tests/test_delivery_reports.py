@@ -25,7 +25,7 @@ class DeliveryFlowTestBase(TestCase):
         Profile.objects.create(user=cls.admin, role='admin')
 
         cls.material_dept = User.objects.create_user(username='mat_dept', password='pass12345')
-        Profile.objects.create(user=cls.material_dept, role='material_dept')
+        Profile.objects.create(user=cls.material_dept, role='management')
 
         cls.category = Category.objects.create(name="钢材", code="STEEL_D")
         cls.supplier = Supplier.objects.create(
@@ -41,7 +41,7 @@ class DeliveryFlowTestBase(TestCase):
         cls.material = Material.objects.create(
             name="螺纹钢D", code="HRB_D", category=cls.category, unit="吨", spec="Φ25",
         )
-        cls.project = Project.objects.create(name="测试项目D", code="P_D01", location="工地A")
+        cls.project = Project.objects.create(name="测试项目D", code="P_D01")
 
         cls.plan = PurchasePlan.objects.create(
             no="PP_D001", project=cls.project, material=cls.material,
@@ -160,7 +160,7 @@ class ReportChartAPITest(TestCase):
                 quantity=Decimal('10'), unit_price=Decimal('100'),
                 supplier=cls.supplier, project=cls.project,
                 operator=cls.admin, date='2026-03-22',
-                location='工地A', spec='Φ25',
+                spec='Φ25',
             )
 
     def test_chart_data_stock(self):
@@ -249,7 +249,7 @@ class ExcelExportDataTest(TestCase):
             quantity=Decimal('50'), unit_price=Decimal('3800'),
             supplier=cls.supplier, project=cls.project,
             operator=cls.admin, date='2026-03-22',
-            location='工地A', spec='Φ25',
+            spec='Φ25',
         )
 
     def test_export_inbound_has_data(self):

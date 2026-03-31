@@ -8,6 +8,27 @@ from .models import (
 admin.site.site_header = '材料管理系统'
 admin.site.site_title = '材料管理后台'
 
+
+class SoftDeleteAdmin(admin.ModelAdmin):
+    """软删除模型管理基类，支持硬删除操作"""
+    actions = ['hard_delete_selected', 'restore_selected']
+
+    def hard_delete_selected(self, request, queryset):
+        """硬删除选中的记录"""
+        count = queryset.count()
+        for obj in queryset:
+            obj.hard_delete()
+        self.message_user(request, f'成功硬删除 {count} 条记录')
+    hard_delete_selected.short_description = '硬删除选中记录'
+
+    def restore_selected(self, request, queryset):
+        """恢复选中的软删除记录"""
+        count = queryset.filter(is_deleted=True).count()
+        queryset.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        self.message_user(request, f'成功恢复 {count} 条记录')
+    restore_selected.short_description = '恢复选中记录'
+
+
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'role', 'phone', 'supplier_info']
@@ -16,8 +37,9 @@ class ProfileAdmin(admin.ModelAdmin):
     autocomplete_fields = ['supplier_info']
     list_select_related = ['user', 'supplier_info']
 
+
 @admin.register(Project)
-class ProjectAdmin(admin.ModelAdmin):
+class ProjectAdmin(SoftDeleteAdmin):
     list_display = ['code', 'name', 'manager', 'status', 'budget', 'is_deleted', 'created_at']
     list_filter = ['status', 'is_deleted']
     search_fields = ['code', 'name']
@@ -25,13 +47,15 @@ class ProjectAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return Project.all_objects.all()
 
+
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(SoftDeleteAdmin):
     list_display = ['code', 'name', 'is_deleted']
     list_filter = ['is_deleted']
 
     def get_queryset(self, request):
         return Category.all_objects.all()
+
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
@@ -40,8 +64,9 @@ class MaterialAdmin(admin.ModelAdmin):
     search_fields = ['code', 'name']
     list_select_related = ['category']
 
+
 @admin.register(Supplier)
-class SupplierAdmin(admin.ModelAdmin):
+class SupplierAdmin(SoftDeleteAdmin):
     list_display = ['code', 'name', 'contact', 'phone', 'credit_rating', 'is_deleted']
     list_filter = ['is_deleted']
     search_fields = ['code', 'name']
@@ -49,8 +74,9 @@ class SupplierAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return Supplier.all_objects.all()
 
+
 @admin.register(InboundRecord)
-class InboundRecordAdmin(admin.ModelAdmin):
+class InboundRecordAdmin(SoftDeleteAdmin):
     list_display = ['no', 'date', 'project', 'material', 'quantity', 'unit_price', 'total_amount', 'supplier', 'is_deleted']
     list_filter = ['project', 'date', 'is_deleted']
     search_fields = ['no']
@@ -58,8 +84,9 @@ class InboundRecordAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return InboundRecord.all_objects.select_related('project', 'material', 'supplier').all()
 
+
 @admin.register(PurchasePlan)
-class PurchasePlanAdmin(admin.ModelAdmin):
+class PurchasePlanAdmin(SoftDeleteAdmin):
     list_display = ['no', 'project', 'material', 'quantity', 'total_amount', 'status', 'planned_date', 'is_deleted']
     list_filter = ['status', 'project', 'is_deleted']
     search_fields = ['no', 'material__name']
@@ -67,14 +94,16 @@ class PurchasePlanAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return PurchasePlan.all_objects.select_related('project', 'material').all()
 
+
 @admin.register(Delivery)
-class DeliveryAdmin(admin.ModelAdmin):
+class DeliveryAdmin(SoftDeleteAdmin):
     list_display = ['no', 'purchase_plan', 'actual_quantity', 'actual_unit_price', 'actual_total_amount', 'supplier', 'status', 'is_deleted']
     list_filter = ['status', 'shipping_method', 'is_deleted']
     search_fields = ['no']
 
     def get_queryset(self, request):
         return Delivery.all_objects.select_related('purchase_plan', 'supplier').all()
+
 
 @admin.register(OperationLog)
 class OperationLogAdmin(admin.ModelAdmin):

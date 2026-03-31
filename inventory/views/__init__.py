@@ -32,6 +32,6 @@ from .settings import (
     user_list, user_save, user_delete, user_detail_api,
     user_groups,
     profile_page, change_password, update_profile,
-    log_list, backup_data, restore_data,
+    log_list, backup_data, restore_data, clear_all_data, init_categories,
 )
 from .performance import performance_dashboard, api_performance_stats

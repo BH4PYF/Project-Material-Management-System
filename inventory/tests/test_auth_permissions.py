@@ -147,7 +147,7 @@ class PermissionMatrixTest(TestCase):
         cls.material = Material.objects.create(
             name="权限测试材料", code="MT_P01", category=cls.category, unit="吨",
         )
-        cls.project = Project.objects.create(name="权限测试项目", code="P_P01", location="工地B")
+        cls.project = Project.objects.create(name="权限测试项目", code="P_P01")
 
         cls.users = {}
         for role in ('admin', 'material_dept', 'clerk', 'supplier'):

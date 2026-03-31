@@ -89,13 +89,13 @@
                         <input type="hidden" name="unit_price" id="addUnitPrice" value="0">
                     </td>
                     <td>
-                        <select class="form-select form-select-sm" name="supplier_id" id="addSupplier">
-                            <option value="">可不选</option>
+                        <select class="form-select form-select-sm" name="supplier_id" id="addSupplier" required>
+                            <option value="">请选择</option>
                             {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
                         </select>
                     </td>
                     <td><small class="text-primary fw-bold" id="addTotal">-</small></td>
-                    <td><input type="date" class="form-control form-control-sm" name="planned_date" id="addDate"></td>
+                    <td><input type="date" class="form-control form-control-sm" name="planned_date" id="addDate" required></td>
                     <td>
 
                     </td>
@@ -120,14 +120,11 @@
                     {% elif plan.status == 'received' %}<span class="badge bg-success">已入库</span>{% endif %}
                 </td>
                 <td>
-                    {% if plan.status != 'received' %}
-                    <button class="btn btn-sm btn-outline-primary" onclick="editPlan({{ plan.pk }})"><i class="bi bi-pencil"></i></button>
-                    {% endif %}
-                    {% if plan.status == 'pending' and (request.user.profile.is_admin or request.user.profile.is_management) %}
+                    {% if plan.status == 'pending' %}{% if request.user.profile.is_admin or request.user.profile.is_management %}
                     <button class="btn btn-sm btn-outline-success" onclick="approvePlan('{% url 'purchase_plan_approve' plan.pk %}', {{ plan.supplier_id|default:'null' }})" title="审批通过"><i class="bi bi-check-lg"></i> 审批</button>
-                    {% endif %}
+                    {% endif %}{% endif %}
                     {% if request.user.profile.is_admin or request.user.profile.is_management %}
-                    {% if plan.status != 'shipped' and plan.status != 'received' %}
+                    {% if plan.status == 'pending' or plan.status == 'purchasing' %}
                     <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{% url 'purchase_plan_delete' plan.pk %}', '{{ plan.no|escapejs }}')"><i class="bi bi-trash"></i></button>
                     {% endif %}
                     {% endif %}
@@ -204,16 +201,16 @@
                     </div>
                     <div class="row">
                         <div class="col-4 mb-3">
-                            <label class="form-label">计划采购日期</label>
-                            <input type="date" class="form-control" name="planned_date" id="planDate">
+                            <label class="form-label">计划采购日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="planned_date" id="planDate" required>
                         </div>
                         <div class="col-4 mb-3">
-                            <label class="form-label">供应商</label>
-                            <select class="form-select" name="supplier_id" id="planSupplier">
+                            <label class="form-label">供应商 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="supplier_id" id="planSupplier" required>
                                 <option value="">请选择供应商</option>
                                 {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
                             </select>
-                            <div class="invalid-feedback">审批时请选择供应商</div>
+                            <div class="invalid-feedback">请选择供应商</div>
                         </div>
 
                     </div>

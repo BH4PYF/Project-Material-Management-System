@@ -35,7 +35,7 @@ class InboundFlowTest(ViewTestBase):
         cls.supplier = Supplier.objects.create(
             name="测试供应商", code="SUP001", contact="张三", phone="13800138000"
         )
-        cls.project = Project.objects.create(name="测试项目", code="P001", location="工地A")
+        cls.project = Project.objects.create(name="测试项目", code="P001")
 
     def test_inbound_create_flow(self):
         self.login()
@@ -46,7 +46,6 @@ class InboundFlowTest(ViewTestBase):
             'quantity': '100',
             'unit_price': '3800',
             'supplier_id': self.supplier.pk,
-            'location': '工地A',
             'spec': 'Φ25',
         })
         self.assertEqual(response.status_code, 302)
@@ -61,7 +60,7 @@ class InboundFlowTest(ViewTestBase):
             quantity=Decimal('10'), unit_price=Decimal('100'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         response = self.client.post(reverse('inbound_delete', args=[record.pk]))
         self.assertEqual(response.status_code, 200)
@@ -76,7 +75,7 @@ class InboundFlowTest(ViewTestBase):
                 quantity=Decimal('1'), unit_price=Decimal('10'),
                 supplier=self.supplier, project=self.project,
                 operator=self.user, date='2026-03-22',
-                location='工地A', spec='规格1',
+                spec='规格1',
             )
         response = self.client.get(reverse('inbound_list'))
         self.assertEqual(response.status_code, 200)
@@ -185,15 +184,15 @@ class ConcurrencySafetyTest(TestCase):
         self.supplier = Supplier.objects.create(
             name="并发供应商", code="SUP_C01", contact="测试", phone="13500135000",
         )
-        self.project = Project.objects.create(name="并发项目", code="P_C01", location="工地C")
+        self.project = Project.objects.create(name="并发项目", code="P_C01")
         self.user = User.objects.create_user(username='conc_user', password='pass12345')
-        Profile.objects.create(user=self.user, role='material_dept')
+        Profile.objects.create(user=self.user, role='management')
 
     def test_concurrent_quick_receive_idempotent(self):
         plan = PurchasePlan.objects.create(
             no="PP_C001", project=self.project, material=self.material,
             quantity=Decimal('100'), unit_price=Decimal('50'),
-            status=PurchasePlan.STATUS_SHIPPING, operator=self.user,
+            status=PurchasePlan.STATUS_SHIPPED, operator=self.user,
         )
         delivery = Delivery.objects.create(
             no='DL_C001', purchase_plan=plan,
@@ -227,7 +226,7 @@ class ConcurrencySafetyTest(TestCase):
             quantity=Decimal('-5'), unit_price=Decimal('10'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-24',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         with self.assertRaises(ValidationError):
             record.save()

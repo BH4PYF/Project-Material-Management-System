@@ -646,3 +646,145 @@ def restore_data(request):
         'message': f'数据恢复成功：{summary}',
         'restored': restored,
     })
+
+
+@admin_required
+@require_POST
+def clear_all_data(request):
+    """一键清空所有数据"""
+    if request.method == 'POST':
+        confirm = request.POST.get('confirm', '').strip()
+        if confirm != 'CONFIRM':
+            return JsonResponse({'error': '请输入 CONFIRM 确认清空所有数据'}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # 按照依赖关系的顺序删除数据
+                # 1. 删除操作日志
+                OperationLog.objects.all().delete()
+                # 2. 删除入库记录
+                InboundRecord.all_objects.all().hard_delete()
+                # 3. 删除发货单
+                from ..models import Delivery
+                Delivery.all_objects.all().hard_delete()
+                # 4. 删除采购计划
+                PurchasePlan.all_objects.all().hard_delete()
+                # 5. 删除材料
+                Material.objects.all().delete()
+                # 6. 删除供应商
+                Supplier.all_objects.all().hard_delete()
+                # 7. 删除项目
+                Project.all_objects.all().hard_delete()
+                # 8. 删除分类
+                Category.all_objects.all().hard_delete()
+                # 9. 保留用户数据和角色信息，只清除其他扩展信息
+                # 保存当前用户的角色信息
+                current_user_id = request.user.id
+                profiles_data = []
+                for profile in Profile.objects.all():
+                    profiles_data.append({
+                        'user_id': profile.user_id,
+                        'role': profile.role,
+                        'phone': profile.phone,
+                    })
+                # 删除所有 Profile
+                Profile.objects.all().delete()
+                # 重新创建 Profile，保留角色信息
+                for data in profiles_data:
+                    Profile.objects.create(
+                        user_id=data['user_id'],
+                        role=data['role'],
+                        phone=data['phone'],
+                    )
+                
+            log_operation(request.user, '系统设置', 'other', '清空所有数据')
+            return JsonResponse({'success': True, 'message': '所有数据已清空，用户角色信息已保留'})
+        except (IntegrityError, DatabaseError) as e:
+            logger.exception('清空数据失败：数据库操作异常')
+            return JsonResponse({'error': '清空数据失败：数据库操作异常，已回滚所有更改'}, status=500)
+        except Exception as e:
+            logger.exception('清空数据失败：未知错误')
+            return JsonResponse({'error': '清空数据失败：系统异常，请重试'}, status=500)
+    return JsonResponse({'error': '无效请求'}, status=400)
+
+
+@admin_required
+@require_POST
+def init_categories(request):
+    """一键初始化材料分类"""
+    if request.method == 'POST':
+        try:
+            from ..models import Category
+            # 定义主要材料分类
+            categories = [
+                {'name': '钢筋'},
+                {'name': '水泥'},
+                {'name': '混凝土'},
+                {'name': '砂石'},
+                {'name': '钢绞线'},
+                {'name': '钢管'},
+                {'name': '水泵'},
+            ]
+            
+            created_count = 0
+            skipped_count = 0
+            
+            with transaction.atomic():
+                for cat_data in categories:
+                    # 检查是否已存在同名分类（包括软删除的）
+                    existing_cat = Category.all_objects.filter(name=cat_data['name']).first()
+                    if existing_cat:
+                        if existing_cat.is_deleted:
+                            # 恢复软删除的分类
+                            existing_cat.is_deleted = False
+                            existing_cat.save()
+                            created_count += 1
+                        else:
+                            # 跳过已存在的分类
+                            skipped_count += 1
+                        continue
+                    
+                    # 生成编码：CAT0001形式
+                    # 找到当前最大的编码
+                    last_cat = Category.all_objects.filter(code__startswith='CAT').order_by('-code').first()
+                    if last_cat:
+                        # 提取数字部分并加1
+                        try:
+                            last_num = int(last_cat.code[3:])
+                            new_num = last_num + 1
+                        except (ValueError, IndexError):
+                            new_num = 1
+                    else:
+                        new_num = 1
+                    
+                    # 生成新编码
+                    code = f"CAT{new_num:04d}"
+                    # 确保编码唯一
+                    while Category.all_objects.filter(code=code).exists():
+                        new_num += 1
+                        code = f"CAT{new_num:04d}"
+                    
+                    # 创建分类
+                    Category.objects.create(
+                        code=code,
+                        name=cat_data['name'],
+                        remark='系统初始化创建'
+                    )
+                    created_count += 1
+            
+            log_operation(request.user, '系统设置', 'create', 
+                         f'一键初始化材料分类：创建{created_count}个，跳过{skipped_count}个')
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'材料分类初始化完成：创建{created_count}个，跳过{skipped_count}个（已存在）'
+            })
+            
+        except (IntegrityError, DatabaseError) as e:
+            logger.exception('初始化材料分类失败：数据库操作异常')
+            return JsonResponse({'error': '初始化失败：数据库操作异常'}, status=500)
+        except Exception as e:
+            logger.exception('初始化材料分类失败：未知错误')
+            return JsonResponse({'error': '初始化失败：系统异常，请重试'}, status=500)
+    
+    return JsonResponse({'error': '无效请求'}, status=400)

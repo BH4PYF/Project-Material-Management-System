@@ -83,7 +83,6 @@ class ProjectModelTest(TestCase):
             name="测试项目",
             code="P001",
             manager="李四",
-            location="工地A",
             budget=Decimal('1000000.00')
         )
 
@@ -123,7 +122,7 @@ class InboundRecordModelTest(TestCase):
             quantity=Decimal('10'), unit_price=Decimal('9.50'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         self.assertEqual(record.total_amount, Decimal('95.00'))
 
@@ -134,7 +133,7 @@ class InboundRecordModelTest(TestCase):
             quantity=Decimal('10'), unit_price=Decimal('9.50'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         new_total = self.material.get_total_inbound()
         self.assertEqual(new_total, initial + 10)
@@ -145,7 +144,7 @@ class InboundRecordModelTest(TestCase):
             quantity=Decimal('5'), unit_price=Decimal('10'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         self.assertFalse(record.is_deleted)
         record.delete()
@@ -161,7 +160,7 @@ class InboundRecordModelTest(TestCase):
             quantity=Decimal('-5'), unit_price=Decimal('10'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         with self.assertRaises(ValidationError):
             record.clean()
@@ -172,7 +171,7 @@ class InboundRecordModelTest(TestCase):
             quantity=Decimal('5'), unit_price=Decimal('-1'),
             supplier=self.supplier, project=self.project,
             operator=self.user, date='2026-03-22',
-            location='工地A', spec='规格1',
+            spec='规格1',
         )
         with self.assertRaises(ValidationError):
             record.clean()

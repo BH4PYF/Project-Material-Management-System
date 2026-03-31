@@ -343,9 +343,9 @@ class PurchasePlan(SoftDeleteModel):
         return f"{self.no} - {self.material.name}"
 
     def save(self, *args, **kwargs):
-        # 使用材料的标准单价计算预计金额
-        if self.material and self.quantity is not None:
-            self.total_amount = self.quantity * self.material.standard_price
+        # 使用预计单价计算预计金额
+        if self.quantity is not None and self.unit_price is not None:
+            self.total_amount = self.quantity * self.unit_price
         super().save(*args, **kwargs)
 
 

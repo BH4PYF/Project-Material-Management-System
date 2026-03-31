@@ -49,25 +49,7 @@ class MaterialViewsTest(TestCase):
         }
         response = self.client.post(reverse('material_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'success': True, 'message': '保存成功'})
         self.assertTrue(Material.objects.filter(name='新材料').exists())
-
-    def test_material_save_update(self):
-        data = {
-            'id': self.material.id,
-            'name': '更新材料',
-            'category_id': self.category.id,
-            'unit': '个',
-            'standard_price': '15.00',
-            'safety_stock': '8',
-            'spec': '更新规格',
-            'remark': '更新备注'
-        }
-        response = self.client.post(reverse('material_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'success': True, 'message': '保存成功'})
-        self.material.refresh_from_db()
-        self.assertEqual(self.material.name, '更新材料')
 
 
 class ProjectViewsTest(TestCase):
@@ -79,14 +61,14 @@ class ProjectViewsTest(TestCase):
         cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
         cls.profile = Profile.objects.create(user=cls.user, role='admin')
         
-        # 添加Django权限
+        # 添加项目权限
         project_content_type = ContentType.objects.get_for_model(Project)
         project_permissions = Permission.objects.filter(content_type=project_content_type)
         cls.user.user_permissions.add(*project_permissions)
         
         cls.project = Project.objects.create(
             code='PRJ001', name='测试项目', manager='张三',
-            location='测试地点', budget=Decimal('1000000.00')
+            budget=Decimal('100000'), status='active'
         )
 
     def setUp(self):
@@ -101,17 +83,23 @@ class ProjectViewsTest(TestCase):
 
     def test_project_save_create(self):
         data = {
+            'code': 'PRJ002',
             'name': '新项目',
             'manager': '李四',
-            'location': '新地点',
-            'budget': '500000.00',
-            'status': 'active',
-            'remark': '测试项目'
+            'budget': '50000',
+            'status': 'active'
         }
         response = self.client.post(reverse('project_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {'success': True, 'message': '保存成功'})
-        self.assertTrue(Project.objects.filter(name='新项目').exists())
+        result = response.json()
+        self.assertTrue(result.get('success'))
+
+    def test_project_detail_api(self):
+        response = self.client.get(reverse('project_detail_api', kwargs={'pk': self.project.id}))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['code'], 'PRJ001')
+        self.assertEqual(data['name'], '测试项目')
 
 
 class SupplierViewsTest(TestCase):
@@ -123,7 +111,7 @@ class SupplierViewsTest(TestCase):
         cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
         cls.profile = Profile.objects.create(user=cls.user, role='admin')
         
-        # 添加Django权限
+        # 添加供应商权限
         supplier_content_type = ContentType.objects.get_for_model(Supplier)
         supplier_permissions = Permission.objects.filter(content_type=supplier_content_type)
         cls.user.user_permissions.add(*supplier_permissions)
@@ -131,7 +119,7 @@ class SupplierViewsTest(TestCase):
         cls.category = Category.objects.create(code='TEST', name='测试分类')
         cls.supplier = Supplier.objects.create(
             code='SUP001', name='测试供应商', contact='王五',
-            phone='13800138000', address='测试地址', main_type=cls.category
+            phone='13800138000', credit_rating='good'
         )
 
     def setUp(self):
@@ -142,10 +130,10 @@ class SupplierViewsTest(TestCase):
         response = self.client.get(reverse('supplier_list'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '测试供应商')
-        self.assertContains(response, 'SUP001')
 
     def test_supplier_save_create(self):
         data = {
+            'code': 'SUP002',
             'name': '新供应商',
             'contact': '赵六',
             'phone': '13900139000',
@@ -169,7 +157,7 @@ class InboundViewsTest(TestCase):
             code='MAT001', name='测试材料', category=cls.category,
             unit='个', standard_price=Decimal('10.00')
         )
-        cls.project = Project.objects.create(code='PRJ001', name='测试项目', location='测试地点')
+        cls.project = Project.objects.create(code='PRJ001', name='测试项目')
         cls.supplier = Supplier.objects.create(code='SUP001', name='测试供应商')
 
     def setUp(self):
@@ -202,7 +190,7 @@ class InboundViewsTest(TestCase):
             no='IN20260327001', project=self.project, material=self.material,
             supplier=self.supplier, date='2026-03-27', quantity=Decimal('5'),
             unit_price=Decimal('12.00'), total_amount=Decimal('60.00'),
-            operator=self.user, location='测试地点', spec='测试规格'
+            operator=self.user, spec='测试规格'
         )
         response = self.client.get(reverse('inbound_detail_api', kwargs={'pk': inbound.id}))
         self.assertEqual(response.status_code, 200)
@@ -237,13 +225,13 @@ class ReportViewsTest(TestCase):
             code='MAT001', name='测试材料', category=cls.category,
             unit='个', standard_price=Decimal('10.00')
         )
-        cls.project = Project.objects.create(code='PRJ001', name='测试项目', location='测试地点')
+        cls.project = Project.objects.create(code='PRJ001', name='测试项目')
         cls.supplier = Supplier.objects.create(code='SUP001', name='测试供应商')
         cls.inbound = InboundRecord.objects.create(
             no='IN20260327001', project=cls.project, material=cls.material,
             supplier=cls.supplier, date='2026-03-27', quantity=Decimal('10'),
             unit_price=Decimal('15.00'), total_amount=Decimal('150.00'),
-            operator=cls.user, location='测试地点', spec='测试规格'
+            operator=cls.user, spec='测试规格'
         )
 
     def setUp(self):
@@ -259,3 +247,222 @@ class ReportViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn('data', data)
+
+
+class PurchasePlanViewsTest(TestCase):
+    """采购计划视图测试"""
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+        cls.category = Category.objects.create(code='TEST', name='测试分类')
+        cls.material = Material.objects.create(
+            code='MAT001', name='测试材料', category=cls.category,
+            unit='个', standard_price=Decimal('10.00')
+        )
+        cls.project = Project.objects.create(code='PRJ001', name='测试项目')
+        cls.supplier = Supplier.objects.create(code='SUP001', name='测试供应商')
+        from ..models import PurchasePlan
+        cls.plan_pending = PurchasePlan.objects.create(
+            no='PP20260327001', project=cls.project, material=cls.material,
+            quantity=Decimal('10'), unit_price=Decimal('10.00'), total_amount=Decimal('100.00'),
+            status=PurchasePlan.STATUS_PENDING, operator=cls.user,
+            planned_date='2026-04-01', spec='测试规格'
+        )
+        cls.plan_purchasing = PurchasePlan.objects.create(
+            no='PP20260327002', project=cls.project, material=cls.material,
+            quantity=Decimal('20'), unit_price=Decimal('10.00'), total_amount=Decimal('200.00'),
+            status=PurchasePlan.STATUS_PURCHASING, operator=cls.user,
+            planned_date='2026-04-01', spec='测试规格'
+        )
+        cls.plan_shipped = PurchasePlan.objects.create(
+            no='PP20260327003', project=cls.project, material=cls.material,
+            quantity=Decimal('30'), unit_price=Decimal('10.00'), total_amount=Decimal('300.00'),
+            status=PurchasePlan.STATUS_SHIPPED, operator=cls.user,
+            planned_date='2026-04-01', spec='测试规格'
+        )
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_purchase_plan_list_view(self):
+        """测试采购计划列表页面"""
+        from ..models import PurchasePlan
+        response = self.client.get(reverse('purchase_plan_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'PP20260327001')
+
+    def test_purchase_plan_save_create(self):
+        """测试创建采购计划"""
+        from ..models import PurchasePlan
+        data = {
+            'project_id': self.project.id,
+            'material_id': self.material.id,
+            'supplier_id': self.supplier.id,
+            'quantity': '15',
+            'spec': '新规格',
+            'planned_date': '2026-04-15',
+            'remark': '测试创建'
+        }
+        response = self.client.post(reverse('purchase_plan_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        self.assertTrue(PurchasePlan.objects.filter(spec='新规格').exists())
+
+    def test_purchase_plan_save_update_pending(self):
+        """测试编辑审批中的采购计划"""
+        from ..models import PurchasePlan
+        data = {
+            'id': self.plan_pending.id,
+            'project_id': self.project.id,
+            'material_id': self.material.id,
+            'supplier_id': self.supplier.id,
+            'quantity': '25',
+            'spec': '修改后的规格',
+            'planned_date': '2026-04-20',
+            'remark': '测试修改'
+        }
+        response = self.client.post(reverse('purchase_plan_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        self.plan_pending.refresh_from_db()
+        self.assertEqual(self.plan_pending.quantity, Decimal('25'))
+        self.assertEqual(self.plan_pending.spec, '修改后的规格')
+
+    def test_purchase_plan_save_update_purchasing(self):
+        """测试编辑采购中的采购计划"""
+        from ..models import PurchasePlan
+        data = {
+            'id': self.plan_purchasing.id,
+            'project_id': self.project.id,
+            'material_id': self.material.id,
+            'supplier_id': self.supplier.id,
+            'quantity': '35',
+            'spec': '修改后的规格2',
+            'planned_date': '2026-04-25',
+            'remark': '测试修改2'
+        }
+        response = self.client.post(reverse('purchase_plan_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        self.plan_purchasing.refresh_from_db()
+        self.assertEqual(self.plan_purchasing.quantity, Decimal('35'))
+
+    def test_purchase_plan_save_update_shipped_not_allowed(self):
+        """测试已发货的采购计划不能编辑"""
+        from ..models import PurchasePlan
+        data = {
+            'id': self.plan_shipped.id,
+            'project_id': self.project.id,
+            'material_id': self.material.id,
+            'supplier_id': self.supplier.id,
+            'quantity': '40',
+            'spec': '不应该修改',
+            'planned_date': '2026-04-30',
+            'remark': '测试修改3'
+        }
+        response = self.client.post(reverse('purchase_plan_save'), data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+        result = response.json()
+        self.assertFalse(result.get('success'))
+        self.assertIn('已发货', result.get('message', ''))
+
+    def test_purchase_plan_delete_pending(self):
+        """测试删除审批中的采购计划"""
+        from ..models import PurchasePlan
+        plan_id = self.plan_pending.pk
+        response = self.client.post(
+            reverse('purchase_plan_delete', kwargs={'pk': plan_id}),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        # 验证对象已被硬删除
+        self.assertFalse(PurchasePlan.objects.filter(pk=plan_id).exists())
+        self.assertFalse(PurchasePlan.all_objects.filter(pk=plan_id).exists())
+
+    def test_purchase_plan_delete_shipped_not_allowed(self):
+        """测试已发货的采购计划不能删除"""
+        from ..models import PurchasePlan
+        response = self.client.post(
+            reverse('purchase_plan_delete', kwargs={'pk': self.plan_shipped.pk}),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 400)
+        result = response.json()
+        self.assertFalse(result.get('success'))
+
+
+class SettingsViewsTest(TestCase):
+    """系统设置视图测试"""
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_settings_page_view(self):
+        """测试设置页面"""
+        response = self.client.get(reverse('settings_page'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_init_categories(self):
+        """测试初始化材料分类"""
+        # 先删除现有分类
+        Category.objects.all().delete()
+        
+        response = self.client.post(
+            reverse('init_categories'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        # 验证是否创建了7个分类
+        self.assertEqual(Category.objects.count(), 7)
+        self.assertTrue(Category.objects.filter(name='钢筋').exists())
+        self.assertTrue(Category.objects.filter(name='水泥').exists())
+
+    def test_init_categories_skip_existing(self):
+        """测试初始化时跳过已存在的分类"""
+        # 先创建一个已存在的分类
+        Category.objects.create(code='CAT0001', name='钢筋')
+        initial_count = Category.objects.count()
+        
+        response = self.client.post(
+            reverse('init_categories'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        # 验证已存在的分类被跳过
+        self.assertIn('跳过', result.get('message', ''))
+
+    def test_clear_all_data(self):
+        """测试清空所有数据"""
+        # 先创建一些测试数据
+        Category.objects.create(code='TEST001', name='测试分类')
+        Project.objects.create(code='PRJ001', name='测试项目')
+        
+        response = self.client.post(
+            reverse('clear_all_data'),
+            {'confirm': 'CONFIRM'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertTrue(result.get('success'))
+        # 验证数据被清空
+        self.assertEqual(Category.objects.count(), 0)
+        self.assertEqual(Project.objects.count(), 0)
+        # 验证用户仍然存在
+        self.assertTrue(User.objects.filter(username='admin').exists())

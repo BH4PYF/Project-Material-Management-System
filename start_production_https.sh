@@ -26,49 +26,15 @@ APP_DIR="$HOME_DIR/Project-Material-Management-System"
 
 echo -e "\n${GREEN}[1/6] 检查 SSL 证书...${NC}"
 SSL_DIR="/etc/nginx/ssl"
-CERT_FILE=""
-KEY_FILE=""
+CERT_FILE="/home/abc/material-sdyhjzgc-com/fullchain.pem"
+KEY_FILE="/home/abc/material-sdyhjzgc-com/privkey.pem"
 
-# 在项目目录中查找证书文件
-echo -e "${YELLOW}正在项目目录中查找 SSL 证书...${NC}"
-CERT_CANDIDATES=$(find "$APP_DIR" -maxdepth 3 \( -name "*.crt" -o -name "*.pem" \) ! -path "*/venv/*" ! -path "*/cacert.pem" 2>/dev/null | head -5)
-KEY_CANDIDATES=$(find "$APP_DIR" -maxdepth 3 -name "*.key" ! -path "*/venv/*" 2>/dev/null | head -5)
-
-if [ -n "$CERT_CANDIDATES" ]; then
-    echo -e "${GREEN}找到以下候选证书文件：${NC}"
-    echo "$CERT_CANDIDATES" | nl -w2 -s') '
-    echo -e "${YELLOW}请选择证书文件编号（或直接输入完整路径）:${NC}"
-    read -p "> " CERT_SELECT
-    
-    if [[ "$CERT_SELECT" =~ ^[0-9]+$ ]]; then
-        CERT_FILE=$(echo "$CERT_CANDIDATES" | sed -n "${CERT_SELECT}p")
-    else
-        CERT_FILE="$CERT_SELECT"
-    fi
-else
-    echo -e "${YELLOW}请输入证书文件路径：${NC}"
-    read -p "> " CERT_FILE
-fi
+# 使用指定的证书目录
+echo -e "${YELLOW}使用指定的证书目录：/home/abc/material-sdyhjzgc-com${NC}"
 
 if [ -z "$CERT_FILE" ] || [ ! -f "$CERT_FILE" ]; then
     echo -e "${RED}错误：证书文件不存在或无效：$CERT_FILE${NC}"
     exit 1
-fi
-
-if [ -n "$KEY_CANDIDATES" ]; then
-    echo -e "${GREEN}找到以下候选私钥文件：${NC}"
-    echo "$KEY_CANDIDATES" | nl -w2 -s') '
-    echo -e "${YELLOW}请选择私钥文件编号（或直接输入完整路径）:${NC}"
-    read -p "> " KEY_SELECT
-    
-    if [[ "$KEY_SELECT" =~ ^[0-9]+$ ]]; then
-        KEY_FILE=$(echo "$KEY_CANDIDATES" | sed -n "${KEY_SELECT}p")
-    else
-        KEY_FILE="$KEY_SELECT"
-    fi
-else
-    echo -e "${YELLOW}请输入私钥文件路径：${NC}"
-    read -p "> " KEY_FILE
 fi
 
 if [ -z "$KEY_FILE" ] || [ ! -f "$KEY_FILE" ]; then
@@ -82,10 +48,10 @@ echo -e "  私钥：$KEY_FILE"
 
 # 创建 SSL 目录并复制证书
 mkdir -p $SSL_DIR
-cp "$CERT_FILE" "$SSL_DIR/material.sdyhjzgc.com.crt"
+cp "$CERT_FILE" "$SSL_DIR/material.sdyhjzgc.com_fullchain.crt"
 cp "$KEY_FILE" "$SSL_DIR/material.sdyhjzgc.com.key"
 chmod 600 "$SSL_DIR/material.sdyhjzgc.com.key"
-chmod 644 "$SSL_DIR/material.sdyhjzgc.com.crt"
+chmod 644 "$SSL_DIR/material.sdyhjzgc.com_fullchain.crt"
 chown -R root:root $SSL_DIR
 echo -e "${GREEN}✓ 证书已复制到 $SSL_DIR${NC}"
 

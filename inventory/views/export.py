@@ -103,7 +103,7 @@ def export_excel(request):
             ws.cell(row=row, column=1, value=r.no)
             ws.cell(row=row, column=2, value=str(r.date))
             ws.cell(row=row, column=3, value=f"{r.project.code} - {r.project.name}")
-            ws.cell(row=row, column=4, value=r.location or '-')
+            ws.cell(row=row, column=4, value='-')
             ws.cell(row=row, column=5, value=r.material.name)
             ws.cell(row=row, column=6, value=r.material.unit)
             ws.cell(row=row, column=7, value=r.spec or '-')
