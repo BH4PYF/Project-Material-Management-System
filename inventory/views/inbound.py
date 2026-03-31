@@ -101,10 +101,6 @@ def inbound_save(request):
             return JsonResponse({'error': err}, status=400)
         project_id = request.POST.get('project_id')
         obj.project_id = project_id
-        # 自动从项目档案获取项目地址
-        project = Project.objects.filter(id=project_id).first()
-        if project:
-            obj.location = project.location or ''
         obj.material_id = request.POST.get('material_id')
         parsed_date = parse_date(request.POST.get('date'))
         if not parsed_date:
@@ -168,7 +164,7 @@ def inbound_detail_api(request, pk):
         'material_id': obj.material_id, 'date': str(obj.date),
         'quantity': str(obj.quantity), 'unit_price': str(obj.unit_price),
         'total_amount': str(obj.total_amount), 'supplier_id': obj.supplier_id,
-        'batch_no': obj.batch_no, 'location': obj.location,
+        'batch_no': obj.batch_no,
         'spec': obj.spec, 'unit': obj.material.unit if obj.material else '',
         'remark': obj.remark,
     }

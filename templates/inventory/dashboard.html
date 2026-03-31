@@ -140,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th>入库单号</th>
                             <th>日期</th>
                             <th>项目</th>
-                            <th>项目地址</th>
                             <th>材料</th>
                             <th>规格</th>
                             <th class="text-end">数量</th>
@@ -155,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td class="small"><code>{{ r.no }}</code></td>
                         <td class="small">{{ r.date }}</td>
                         <td class="small">{{ r.project.name }}</td>
-                        <td class="small text-muted">{{ r.location|default:r.project.location|default:'-' }}</td>
                         <td class="small">{{ r.material.name }}</td>
                         <td class="small text-muted">{{ r.material.spec|default:'-' }}</td>
                         <td class="small text-end">{{ r.quantity|floatformat:2 }} {{ r.material.unit }}</td>
@@ -164,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td class="small">{{ r.supplier.name }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="10" class="text-center py-5">
+                    <tr><td colspan="9" class="text-center py-5">
                         <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
                         <h6 class="text-muted">今日暂无入库记录</h6>
                         <small class="text-muted">{{ today }}</small>

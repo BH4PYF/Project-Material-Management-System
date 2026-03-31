@@ -75,12 +75,10 @@ class Profile(models.Model):
     ROLE_CHOICES = [
         ('admin', '管理员'),
         ('management', '管理层'),
-        ('material_dept', '物资部'),
-        ('clerk', '材料员'),
         ('supplier', '供应商'),
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    role = models.CharField('角色', max_length=20, choices=ROLE_CHOICES, default='clerk')
+    role = models.CharField('角色', max_length=20, choices=ROLE_CHOICES, default='management')
     phone = models.CharField('联系电话', max_length=20, blank=True)
     supplier_info = models.ForeignKey('Supplier', on_delete=models.SET_NULL, verbose_name='关联供应商档案', null=True, blank=True, related_name='user_profiles')
 
@@ -103,16 +101,8 @@ class Profile(models.Model):
         return self.role == 'admin'
 
     @property
-    def is_material_dept(self):
-        return self.role == 'material_dept'
-
-    @property
     def is_management(self):
         return self.role == 'management'
-
-    @property
-    def is_clerk(self):
-        return self.role == 'clerk'
 
     @property
     def is_supplier(self):
@@ -127,9 +117,7 @@ class Profile(models.Model):
             self.user.user_permissions.clear()
             for permission in group.permissions.all():
                 self.user.user_permissions.add(permission)
-            # 设置默认角色
-            self.role = 'clerk'
-            self.save()
+            # 不再强制设置角色，保留用户手动设置的角色
         else:
             # 根据角色设置权限
             self.user.user_permissions.clear()
@@ -141,12 +129,8 @@ class Profile(models.Model):
                 # 管理层拥有查看和管理权限
                 self.user.is_staff = True
                 self.user.save()
-            elif self.role == 'material_dept':
-                # 物资部拥有材料管理相关权限
-                self.user.is_staff = True
-                self.user.save()
             else:
-                # 其他角色（材料员、供应商）不拥有后台权限
+                # 供应商不拥有后台权限
                 self.user.is_staff = False
                 self.user.save()
 
@@ -162,7 +146,6 @@ class Project(SoftDeleteModel):
     code = models.CharField('项目编号', max_length=20, unique=True)
     name = models.CharField('项目名称', max_length=200)
     manager = models.CharField('项目负责人', max_length=50, blank=True)
-    location = models.CharField('项目地点', max_length=200, blank=True)
     start_date = models.DateField('开工日期', null=True, blank=True)
     end_date = models.DateField('预计竣工日期', null=True, blank=True)
     budget = models.DecimalField('项目预算', max_digits=14, decimal_places=2, default=0)
@@ -292,8 +275,7 @@ class InboundRecord(SoftDeleteModel):
     batch_no = models.CharField('采购批次号', max_length=50, blank=True)
     inspector = models.CharField('验收人', max_length=50, blank=True)
     quality_status = models.CharField('质量状态', max_length=20, choices=QUALITY_CHOICES, default='qualified')
-    # 快照字段：入库时记录项目地址和规格，防止后续修改导致历史数据不一致
-    location = models.CharField('项目地址（快照）', max_length=100)
+    # 快照字段：入库时记录规格，防止后续修改导致历史数据不一致
     spec = models.CharField('规格型号（快照）', max_length=100)
     operator = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='操作员', related_name='inbound_ops')
     operate_time = models.DateTimeField('操作时间', auto_now_add=True)

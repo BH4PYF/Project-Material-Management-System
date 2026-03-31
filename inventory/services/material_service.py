@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Tuple
 from django.db.models import Q, Sum
 from django.db import transaction
 
-from inventory.models import Material, Category, InboundRecord
+from inventory.models import Material, Category, InboundRecord, PurchasePlan
 
 
 class MaterialService:
@@ -148,11 +148,23 @@ class MaterialService:
             if material.inbound_records.exists():
                 return False, '该材料已有入库记录，无法删除'
             
+            # 检查是否有采购计划
+            if material.purchase_plans.exists():
+                return False, '该材料已有采购计划，无法删除'
+            
             material.delete()
             return True, None
         except Material.DoesNotExist:
             return False, '材料不存在'
         except Exception as e:
+            # 捕获外键保护异常
+            if 'protected foreign keys' in str(e):
+                if 'PurchasePlan.material' in str(e):
+                    return False, '该材料已有采购计划，无法删除'
+                elif 'InboundRecord.material' in str(e):
+                    return False, '该材料已有入库记录，无法删除'
+                else:
+                    return False, '该材料被其他记录引用，无法删除'
             return False, str(e)
     
     @staticmethod

@@ -53,16 +53,13 @@ def delivery_list(request):
             status=PurchasePlan.STATUS_PURCHASING
         ).order_by('-create_time')
     
-    # 分页：每页 20 条
-    paginator = Paginator(deliveries_qs, 20)
-    page_number = request.GET.get('page')
-    deliveries = paginator.get_page(page_number)
+    # 移除分页，获取所有发货单
+    deliveries = deliveries_qs.all()
 
     return render(request, 'inventory/delivery_list.html', {
         'available_plans': available_plans,
         'deliveries': deliveries,
-        'is_paginated': True,
-        'page_obj': deliveries,
+        'is_paginated': False,
     })
 
 
@@ -406,7 +403,6 @@ def get_delivery_by_no(request):
                 'no': delivery.no,
                 'project_id': delivery.purchase_plan.project_id,
                 'project_name': delivery.purchase_plan.project.name,
-                'project_location': delivery.purchase_plan.project.location or '',
                 'material_id': delivery.purchase_plan.material_id,
                 'material_name': delivery.purchase_plan.material.name,
                 'material_spec': delivery.purchase_plan.material.spec or '',
@@ -437,15 +433,12 @@ def quick_receive_confirm(request):
         receive_date_raw = request.POST.get('receive_date', '')
         receive_date = parse_date(receive_date_raw) or timezone.now().date()
 
-        delivery = Delivery.objects.select_related('purchase_plan__project').filter(pk=delivery_id).first()
-        default_location = delivery.purchase_plan.project.location if delivery else ''
-        location = request.POST.get('location', default_location or '')
         remark = request.POST.get('remark', '')
 
         inbound, delivery = quick_receive_service(
             delivery_id=delivery_id,
             receive_date=receive_date,
-            location=location,
+            location='',
             remark=remark,
             operator=request.user,
         )

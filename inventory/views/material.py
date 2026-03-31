@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
-from django.views.decorators.cache import cache_page
+
 from django.core.paginator import Paginator
 
 from ..models import Category, Material, InboundRecord
@@ -10,7 +10,7 @@ from ..services import MaterialService
 from .utils import admin_required, log_operation, parse_positive_decimal, validate_required_fields, combined_permission_required
 
 
-@combined_permission_required(perm='inventory.view_category', roles=['admin'])
+@combined_permission_required(perm='inventory.view_category', roles=['admin', 'management'])
 @require_GET
 def category_list_api(request):
     cats = Category.objects.all().order_by('code')
@@ -18,7 +18,7 @@ def category_list_api(request):
     return JsonResponse(data, safe=False)
 
 
-@combined_permission_required(perm='inventory.view_material', roles=['admin'])
+@combined_permission_required(perm='inventory.view_material', roles=['admin', 'management'])
 def material_list(request):
     q = request.GET.get('q', '')
     cat_id = request.GET.get('category', '')
@@ -41,7 +41,7 @@ def material_list(request):
     })
 
 
-@combined_permission_required(perm='inventory.change_material', roles=['admin'])
+@combined_permission_required(perm='inventory.change_material', roles=['admin', 'management'])
 def material_save(request):
     if request.method == 'POST':
         pk = request.POST.get('id')
@@ -93,7 +93,7 @@ def material_save(request):
     return redirect('material_list')
 
 
-@combined_permission_required(perm='inventory.delete_material', roles=['admin'])
+@combined_permission_required(perm='inventory.delete_material', roles=['admin', 'management'])
 @require_POST
 def material_delete(request, pk):
     success, error = MaterialService.delete_material(int(pk))
@@ -106,7 +106,7 @@ def material_delete(request, pk):
     return JsonResponse({'success': True})
 
 
-@combined_permission_required(perm='inventory.view_material', roles=['admin'])
+@combined_permission_required(perm='inventory.view_material', roles=['admin', 'management'])
 @require_GET
 def material_detail_api(request, pk):
     obj = get_object_or_404(Material, pk=pk)
@@ -120,7 +120,7 @@ def material_detail_api(request, pk):
     return JsonResponse(data)
 
 
-@combined_permission_required(perm='inventory.view_material', roles=['admin'])
+@combined_permission_required(perm='inventory.view_material', roles=['admin', 'management'])
 @require_GET
 def check_material_duplicate(request):
     """检查材料是否重复（用于前端实时查重）"""

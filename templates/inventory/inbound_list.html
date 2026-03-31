@@ -59,8 +59,9 @@
 <div class="page-header">
     <h5><i class="bi bi-box-arrow-in-down"></i> 入库管理</h5>
     <div>
+        <button class="btn btn-sm btn-outline-primary me-2" onclick="openColumnEditor()"><i class="bi bi-columns"></i> 编辑列</button>
         <a href="{% url 'export_excel' %}?type=inbound&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&project={{ project_id|default:''|urlencode }}&material={{ material_id|default:''|urlencode }}&supplier={{ supplier_id|default:''|urlencode }}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
-        {% if request.user.profile.is_admin or request.user.profile.is_material_dept %}        {% endif %}
+        {% if request.user.profile.is_admin or request.user.profile.is_management %}        {% endif %}
     </div>
 </div>
 <div class="filter-bar">
@@ -102,7 +103,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
         <table class="table table-hover mb-0">
-            <thead><tr><th class="col-code">入库单号</th><th class="col-date">日期 <span class="text-danger">*</span></th><th class="col-name">项目 <span class="text-danger">*</span></th><th class="col-spec">项目地址 <span class="text-danger">*</span></th><th class="col-name">材料 <span class="text-danger">*</span></th><th class="col-unit">单位</th><th class="col-spec">规格 <span class="text-danger">*</span></th><th class="col-qty">数量 <span class="text-danger">*</span></th><th class="col-price">单价 <span class="text-danger">*</span></th><th class="col-total">总金额</th><th class="col-name">供应商 <span class="text-danger">*</span></th><th class="col-action">操作</th></tr></thead>
+            <thead><tr><th class="col-code">入库单号</th><th class="col-date">日期 <span class="text-danger">*</span></th><th class="col-name">项目 <span class="text-danger">*</span></th><th class="col-name">材料 <span class="text-danger">*</span></th><th class="col-unit">单位</th><th class="col-spec">规格 <span class="text-danger">*</span></th><th class="col-qty">数量 <span class="text-danger">*</span></th><th class="col-price">单价 <span class="text-danger">*</span></th><th class="col-total">总金额</th><th class="col-name">供应商 <span class="text-danger">*</span></th><th class="col-action">操作</th></tr></thead>
             <tbody>
             <!-- 新增行 -->
             <form method="post" action="{% url 'inbound_save' %}" class="d-contents" id="addForm" data-ajax>
@@ -112,12 +113,11 @@
                     <td><small class="text-muted">(自动生成)</small></td>
                     <td><input type="date" class="form-control form-control-sm" name="date" id="addDate" required></td>
                     <td>
-                        <select class="form-select form-select-sm" name="project_id" id="addProject" required onchange="onAddProjectChange(this)">
+                        <select class="form-select form-select-sm" name="project_id" id="addProject" required>
                             <option value="">请选择</option>
-                            {% for p in projects %}<option value="{{ p.id }}" data-location="{{ p.location|default:'' }}">{{ p.name }}</option>{% endfor %}
+                            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
                         </select>
                     </td>
-                    <td><small class="text-muted" id="addLocation">自动获取</small></td>
                     <td>
                         <select class="form-select form-select-sm" name="material_id" id="addMaterial" required onchange="onAddMaterialChange(this)">
                             <option value="">请选择</option>
@@ -150,7 +150,6 @@
             {% for r in records %}
             <tr>
                 <td><small>{{ r.no }}</small></td><td>{{ r.date }}</td><td>{{ r.project.name }}</td>
-                <td><small class="text-muted scrollable-cell">{{ r.location }}</small></td>
                 <td>{{ r.material.name }}</td><td class="col-unit">{{ r.material.unit }}</td>
                 <td><small class="text-muted scrollable-cell">{{ r.spec }}</small></td>
                 <td class="col-qty">{{ r.quantity|floatformat:2 }}</td><td class="col-price">{{ r.unit_price|floatformat:2 }}</td>
@@ -158,7 +157,7 @@
                 <td>{{ r.supplier.name }}</td>
                 <td class="col-action">
                     <button class="btn btn-sm btn-outline-primary" onclick="editInbound({{ r.pk }})"><i class="bi bi-pencil"></i></button>
-                    {% if request.user.profile.is_admin or request.user.profile.is_material_dept %}
+                    {% if request.user.profile.is_admin or request.user.profile.is_management %}
                     <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{% url 'inbound_delete' r.pk %}', '{{ r.no|escapejs }}')"><i class="bi bi-trash"></i></button>
                     {% endif %}
                 </td>
@@ -196,17 +195,13 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">项目 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="inProject" name="project_id" required onchange="onProjectChange(this)">
-                                <option value="">请选择</option>
-                                {% for p in projects %}<option value="{{ p.id }}" data-location="{{ p.location|default:'' }}">{{ p.name }}</option>{% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">项目地址 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="inLocation" name="location" readonly>
-                        </div>
+                        <div class="col-md-12 mb-3">
+                        <label class="form-label">项目 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="inProject" name="project_id" required>
+                            <option value="">请选择</option>
+                            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                        </select>
+                    </div>
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -271,21 +266,41 @@
     </div>
 </div>
 
+<!-- 列编辑器模态框 -->
+<div class="modal fade" id="columnEditorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-columns"></i> 编辑列</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>可选列</h6>
+                        <div id="availableColumns" class="list-group mb-3"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>已选列</h6>
+                        <div id="selectedColumns" class="list-group mb-3"></div>
+                    </div>
+                </div>
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle"></i> 拖拽列到已选区域以添加，拖拽出已选区域以移除。点击列可以调整顺序。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveColumnConfig()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 {% block extra_js %}
 <script>
 // 新增行相关函数
-function onAddProjectChange(sel){
-    var opt=sel.options[sel.selectedIndex];
-    var location = opt.dataset.location||'';
-    // 自动填充项目地址
-    var locationDisplay = document.getElementById('addLocation');
-    if(location){
-        locationDisplay.textContent = location;
-    } else {
-        locationDisplay.textContent = '-';
-    }
-}
 function onAddMaterialChange(sel){
     var opt=sel.options[sel.selectedIndex];
     // 如果规格字段为空，则自动填充材料规格
@@ -342,14 +357,7 @@ function onMaterialChange(sel){
     document.getElementById('inPrice').value=opt.dataset.price||'0';
     calcTotal();
 }
-function onProjectChange(sel){
-    var opt=sel.options[sel.selectedIndex];
-    var locInput=document.getElementById('inLocation');
-    // 自动填充项目地址（编辑时总是更新）
-    if(opt.dataset.location){
-        locInput.value=opt.dataset.location;
-    }
-}
+
 function calcTotal(){
     var q = parseFloat(document.getElementById('inQty').value) || 0;
     var p = parseFloat(document.getElementById('inPrice').value) || 0;
@@ -362,8 +370,6 @@ function editInbound(pk) {
         document.getElementById('inNo').value = d.no;
         document.getElementById('inDate').value = d.date;
         document.getElementById('inProject').value = d.project_id;
-        // 触发项目 change 事件以填充地址
-        onProjectChange(document.getElementById('inProject'));
         document.getElementById('inMaterial').value = d.material_id;
         // 触发材料 change 事件以填充规格和单位
         onMaterialChange(document.getElementById('inMaterial'));
@@ -374,7 +380,6 @@ function editInbound(pk) {
         calcTotal();
         document.getElementById('inSupplier').value = d.supplier_id;
         document.getElementById('inBatch').value = d.batch_no || '';
-        document.getElementById('inLocation').value = d.location || '';
         document.getElementById('inRemark').value = d.remark || '';
         document.getElementById('inboundModalTitle').textContent = '编辑入库记录';
         new bootstrap.Modal(document.getElementById('inboundModal')).show();
@@ -409,5 +414,280 @@ function handleInboundSaveSuccess(data) {
         location.reload();
     }, 1500);
 }
+
+// 列编辑器功能
+const columnConfig = {
+    availableColumns: [
+        { id: 'no', name: '入库单号', class: 'col-code' },
+        { id: 'date', name: '日期', class: 'col-date', required: true },
+        { id: 'project', name: '项目', class: 'col-name', required: true },
+        { id: 'material', name: '材料', class: 'col-name', required: true },
+        { id: 'unit', name: '单位', class: 'col-unit' },
+        { id: 'spec', name: '规格', class: 'col-spec', required: true },
+        { id: 'quantity', name: '数量', class: 'col-qty', required: true },
+        { id: 'unit_price', name: '单价', class: 'col-price', required: true },
+        { id: 'total_amount', name: '总金额', class: 'col-total' },
+        { id: 'supplier', name: '供应商', class: 'col-name', required: true },
+        { id: 'action', name: '操作', class: 'col-action' }
+    ],
+    defaultColumns: ['no', 'date', 'project', 'material', 'unit', 'spec', 'quantity', 'unit_price', 'total_amount', 'supplier', 'action']
+};
+
+// 初始化列编辑器
+function initColumnEditor() {
+    const availableContainer = document.getElementById('availableColumns');
+    const selectedContainer = document.getElementById('selectedColumns');
+    
+    if (!availableContainer || !selectedContainer) return;
+    
+    // 清空容器
+    availableContainer.innerHTML = '';
+    selectedContainer.innerHTML = '';
+    
+    // 获取当前列配置
+    const currentColumns = getColumnConfig();
+    
+    // 渲染可选列
+    columnConfig.availableColumns.forEach(column => {
+        if (!currentColumns.includes(column.id)) {
+            const item = document.createElement('div');
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            item.draggable = true;
+            item.dataset.columnId = column.id;
+            item.innerHTML = `
+                <span>${column.name}${column.required ? ' <span class="text-danger">*</span>' : ''}</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="addColumn('${column.id}')">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            `;
+            
+            // 添加拖拽事件
+            item.addEventListener('dragstart', function(e) {
+                e.dataTransfer.setData('text/plain', column.id);
+                this.classList.add('opacity-50');
+            });
+            
+            item.addEventListener('dragend', function() {
+                this.classList.remove('opacity-50');
+            });
+            
+            availableContainer.appendChild(item);
+        }
+    });
+    
+    // 渲染已选列
+    currentColumns.forEach((columnId, index) => {
+        const column = columnConfig.availableColumns.find(c => c.id === columnId);
+        if (column) {
+            const item = document.createElement('div');
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center bg-light';
+            item.draggable = true;
+            item.dataset.columnId = column.id;
+            item.innerHTML = `
+                <span>${column.name}${column.required ? ' <span class="text-danger">*</span>' : ''}</span>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="moveColumn('${column.id}', -1)" ${index === 0 ? 'disabled' : ''}>
+                        <i class="bi bi-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="moveColumn('${column.id}', 1)" ${index === currentColumns.length - 1 ? 'disabled' : ''}>
+                        <i class="bi bi-arrow-down"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeColumn('${column.id}')">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `;
+            
+            // 添加拖拽事件
+            item.addEventListener('dragstart', function(e) {
+                e.dataTransfer.setData('text/plain', column.id);
+                this.classList.add('opacity-50');
+            });
+            
+            item.addEventListener('dragend', function() {
+                this.classList.remove('opacity-50');
+            });
+            
+            selectedContainer.appendChild(item);
+        }
+    });
+    
+    // 添加拖放事件
+    selectedContainer.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(this, e.clientY);
+        const draggable = document.querySelector('.opacity-50');
+        if (afterElement == null) {
+            this.appendChild(draggable);
+        } else {
+            this.insertBefore(draggable, afterElement);
+        }
+    });
+}
+
+// 获取拖放位置
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.list-group-item:not(.opacity-50)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// 打开列编辑器
+function openColumnEditor() {
+    initColumnEditor();
+    new bootstrap.Modal(document.getElementById('columnEditorModal')).show();
+}
+
+// 添加列
+function addColumn(columnId) {
+    const currentColumns = getColumnConfig();
+    if (!currentColumns.includes(columnId)) {
+        currentColumns.push(columnId);
+        saveColumnConfig(currentColumns);
+        initColumnEditor();
+    }
+}
+
+// 移除列
+function removeColumn(columnId) {
+    const column = columnConfig.availableColumns.find(c => c.id === columnId);
+    if (column && column.required) {
+        showMsg('该列是必填项，不能移除', 'error');
+        return;
+    }
+    
+    let currentColumns = getColumnConfig();
+    currentColumns = currentColumns.filter(id => id !== columnId);
+    saveColumnConfig(currentColumns);
+    initColumnEditor();
+}
+
+// 移动列
+function moveColumn(columnId, direction) {
+    let currentColumns = getColumnConfig();
+    const index = currentColumns.indexOf(columnId);
+    if (index === -1) return;
+    
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= currentColumns.length) return;
+    
+    // 交换位置
+    [currentColumns[index], currentColumns[newIndex]] = [currentColumns[newIndex], currentColumns[index]];
+    saveColumnConfig(currentColumns);
+    initColumnEditor();
+}
+
+// 保存列配置
+function saveColumnConfig(columns) {
+    if (!columns) {
+        // 从UI获取当前配置
+        const selectedItems = document.querySelectorAll('#selectedColumns .list-group-item');
+        columns = Array.from(selectedItems).map(item => item.dataset.columnId);
+    }
+    
+    // 验证必填列
+    const requiredColumns = columnConfig.availableColumns.filter(c => c.required).map(c => c.id);
+    const hasAllRequired = requiredColumns.every(col => columns.includes(col));
+    
+    if (!hasAllRequired) {
+        showMsg('请确保所有必填列都已选中', 'error');
+        return;
+    }
+    
+    // 保存到本地存储
+    localStorage.setItem('inboundColumns', JSON.stringify(columns));
+    
+    // 显示成功消息
+    showMsg('列配置已保存', 'success');
+    
+    // 关闭模态框并刷新页面
+    const modalEl = document.getElementById('columnEditorModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+    
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+// 获取列配置
+function getColumnConfig() {
+    const saved = localStorage.getItem('inboundColumns');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to parse column config:', e);
+        }
+    }
+    return columnConfig.defaultColumns;
+}
+
+// 应用列配置
+function applyColumnConfig() {
+    const currentColumns = getColumnConfig();
+    const table = document.querySelector('table');
+    if (!table) return;
+    
+    // 处理表头
+    const headerRow = table.querySelector('thead tr');
+    if (headerRow) {
+        const headerCells = headerRow.querySelectorAll('th');
+        headerCells.forEach(cell => {
+            // 根据列的class判断是否显示
+            const cellClass = Array.from(cell.classList).find(cls => cls.startsWith('col-'));
+            if (cellClass) {
+                const columnId = getColumnIdFromClass(cellClass);
+                if (columnId) {
+                    cell.style.display = currentColumns.includes(columnId) ? '' : 'none';
+                }
+            }
+        });
+    }
+    
+    // 处理数据行
+    const dataRows = table.querySelectorAll('tbody tr');
+    dataRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((cell, index) => {
+            // 根据表头的显示状态来决定单元格的显示状态
+            const headerCells = table.querySelectorAll('thead th');
+            const headerCell = headerCells[index];
+            if (headerCell) {
+                cell.style.display = window.getComputedStyle(headerCell).display;
+            }
+        });
+    });
+}
+
+// 从class获取列ID
+function getColumnIdFromClass(cellClass) {
+    const classMap = {
+        'col-code': 'no',
+        'col-date': 'date',
+        'col-name': 'project', // 需要特殊处理，因为多个列使用了col-name
+        'col-spec': 'spec', // 需要特殊处理，因为多个列使用了col-spec
+        'col-unit': 'unit',
+        'col-qty': 'quantity',
+        'col-price': 'unit_price',
+        'col-total': 'total_amount',
+        'col-action': 'action'
+    };
+    return classMap[cellClass];
+}
+
+// 页面加载时应用列配置
+document.addEventListener('DOMContentLoaded', function() {
+    applyColumnConfig();
+});
 </script>
 {% endblock %}

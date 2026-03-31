@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.db.models import Sum
 from django.db.models.functions import ExtractYear, ExtractMonth
 from django.views.decorators.http import require_GET
-from django.views.decorators.cache import cache_page
+
 
 from ..models import (
     Project, Category, Supplier,
@@ -18,8 +18,7 @@ from .utils import (
 )
 
 
-@role_required('admin', 'material_dept', 'clerk')
-@cache_page(60 * 10)  # 缓存10分钟
+@role_required('admin', 'management')
 def report_page(request):
     projects = Project.objects.all()
     categories = Category.objects.all().order_by('code')
@@ -29,7 +28,7 @@ def report_page(request):
     })
 
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 def report_project_cost(request):
     project_id = request.GET.get('project_id')
     date_from = parse_date(request.GET.get('date_from', ''))
@@ -64,22 +63,25 @@ def report_project_cost(request):
     total = sum(row['total_cost'] for row in material_agg) or Decimal('0')
 
     if export == 'excel':
-        headers = ['分类', '材料名称', '规格', '单位', '数量', '金额', '占比']
+        headers = ['分类', '材料名称', '规格', '单位', '数量', '平均单价', '金额', '占比']
         wb, ws, border = create_excel_workbook(f'{project.name}_采购成本分析', headers, style='report')
         row = 2
         for v in material_agg:
             ratio = f"{v['total_cost'] / total * 100:.1f}%" if total else '0%'
+            # 计算平均单价
+            avg_price = v['total_cost'] / v['total_qty'] if v['total_qty'] > 0 else 0
             ws.cell(row=row, column=1, value=v['material__category__name']).border = border
             ws.cell(row=row, column=2, value=v['material__name']).border = border
             ws.cell(row=row, column=3, value=v['material__spec']).border = border
             ws.cell(row=row, column=4, value=v['material__unit']).border = border
             ws.cell(row=row, column=5, value=float(v['total_qty'])).border = border
-            ws.cell(row=row, column=6, value=float(v['total_cost'])).border = border
-            ws.cell(row=row, column=7, value=ratio).border = border
+            ws.cell(row=row, column=6, value=float(avg_price)).border = border
+            ws.cell(row=row, column=7, value=float(v['total_cost'])).border = border
+            ws.cell(row=row, column=8, value=ratio).border = border
             row += 1
         from openpyxl.styles import Font
         ws.cell(row=row, column=5, value='合计').font = Font(bold=True)
-        ws.cell(row=row, column=6, value=float(total)).font = Font(bold=True)
+        ws.cell(row=row, column=7, value=float(total)).font = Font(bold=True)
         filename = f'{project.name}_采购成本分析_{date_from}_{date_to}.xlsx'
         log_operation(request.user, '统计报表', 'export', f'导出项目采购成本分析 {project.name} 期间:{date_from}至{date_to}', project.code)
         return make_excel_response(wb, filename)
@@ -87,12 +89,15 @@ def report_project_cost(request):
         # 转换为模板需要的格式
         report_data = []
         for v in material_agg:
+            # 计算平均单价
+            avg_price = v['total_cost'] / v['total_qty'] if v['total_qty'] > 0 else Decimal('0')
             report_data.append({
                 'category': v['material__category__name'],
                 'name': v['material__name'],
                 'spec': v['material__spec'],
                 'unit': v['material__unit'],
                 'quantity': v['total_qty'],
+                'avg_price': avg_price,
                 'cost': v['total_cost'],
                 'ratio': v['total_cost'] / total * 100 if total else 0,
             })
@@ -103,7 +108,7 @@ def report_project_cost(request):
         })
 
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 def report_supplier_cost(request):
     supplier_id = request.GET.get('supplier_id')
     date_from = parse_date(request.GET.get('date_from', ''))
@@ -175,7 +180,7 @@ def report_supplier_cost(request):
         })
 
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 def report_monthly(request):
     date_from = parse_date(request.GET.get('date_from', ''))
     date_to = parse_date(request.GET.get('date_to', ''))
@@ -230,14 +235,13 @@ def report_monthly(request):
 
 # ========== 图表分析 ==========
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 def chart_page(request):
     return render(request, 'inventory/charts.html')
 
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 @require_GET
-@cache_page(60 * 5)  # 缓存5分钟
 def chart_data_api(request):
     chart_type = request.GET.get('type', 'stock')
     date_from = parse_date(request.GET.get('date_from', ''))
@@ -288,7 +292,7 @@ def chart_data_api(request):
     return JsonResponse({'data': []})
 
 
-@role_required('admin', 'material_dept', 'clerk')
+@role_required('admin', 'management')
 @require_GET
 def get_years_list(request):
     """返回有入库数据的年份列表（降序）"""

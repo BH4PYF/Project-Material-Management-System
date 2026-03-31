@@ -27,12 +27,13 @@
     <div class="card-header bg-white"><h6 class="mb-0">项目: {{ project.name }} ({{ project.code }})</h6></div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
-            <thead><tr><th>材料分类</th><th>材料名称</th><th>规格</th><th>单位</th><th>累计用量</th><th>累计成本(元)</th><th>成本占比</th></tr></thead>
+            <thead><tr><th>材料分类</th><th>材料名称</th><th>规格</th><th>单位</th><th>累计用量</th><th>平均单价(元)</th><th>累计成本(元)</th><th>成本占比</th></tr></thead>
             <tbody>
             {% for r in report_data %}
             <tr>
                 <td>{{ r.category }}</td><td>{{ r.name }}</td><td>{{ r.spec }}</td><td>{{ r.unit }}</td>
                 <td>{{ r.quantity|floatformat:2 }}</td>
+                <td>{{ r.avg_price|floatformat:2 }}</td>
                 <td class="text-danger fw-bold">{{ r.cost|floatformat:2 }}</td>
                 <td>
                     <div class="d-flex align-items-center">
@@ -42,11 +43,11 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">该项目暂无入库记录</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">该项目暂无入库记录</td></tr>
             {% endfor %}
             </tbody>
             {% if report_data %}
-            <tfoot><tr class="table-light"><td colspan="5" class="text-end fw-bold">合计</td><td class="text-danger fw-bold">{{ total_cost|floatformat:2 }}</td><td></td></tr></tfoot>
+            <tfoot><tr class="table-light"><td colspan="5" class="text-end fw-bold">合计</td><td></td><td class="text-danger fw-bold">{{ total_cost|floatformat:2 }}</td><td></td></tr></tfoot>
             {% endif %}
         </table>
     </div>

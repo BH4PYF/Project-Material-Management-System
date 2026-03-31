@@ -101,7 +101,7 @@ def export_inbound_excel(self, user_id, date_from=None, date_to=None, project_id
         from django.contrib.auth.models import User
         user = User.objects.get(id=user_id)
         
-        headers = ['入库单号', '日期', '项目', '项目地址', '材料', '单位', '规格', '数量', '单价', '总金额', '供应商']
+        headers = ['入库单号', '日期', '项目', '材料', '单位', '规格', '数量', '单价', '总金额', '供应商']
         wb, ws, _ = create_excel_workbook('入库记录', headers, style='primary')
         
         # 查询入库记录
@@ -126,17 +126,16 @@ def export_inbound_excel(self, user_id, date_from=None, date_to=None, project_id
             ws.cell(row=row, column=1, value=r.no)
             ws.cell(row=row, column=2, value=str(r.date))
             ws.cell(row=row, column=3, value=r.project.name)
-            ws.cell(row=row, column=4, value=r.project.location or '')
-            ws.cell(row=row, column=5, value=r.material.name)
-            ws.cell(row=row, column=6, value=r.material.unit)
-            ws.cell(row=row, column=7, value=r.spec or r.material.spec)
-            ws.cell(row=row, column=8, value=float(r.quantity))
-            ws.cell(row=row, column=9, value=float(r.unit_price))
-            ws.cell(row=row, column=10, value=float(r.total_amount))
-            ws.cell(row=row, column=11, value=r.supplier.name)
+            ws.cell(row=row, column=4, value=r.material.name)
+            ws.cell(row=row, column=5, value=r.material.unit)
+            ws.cell(row=row, column=6, value=r.spec or r.material.spec)
+            ws.cell(row=row, column=7, value=float(r.quantity))
+            ws.cell(row=row, column=8, value=float(r.unit_price))
+            ws.cell(row=row, column=9, value=float(r.total_amount))
+            ws.cell(row=row, column=10, value=r.supplier.name)
             row += 1
         
-        set_column_widths(ws, [12, 12, 20, 20, 20, 8, 15, 10, 10, 12, 20])
+        set_column_widths(ws, [12, 12, 20, 20, 8, 15, 10, 10, 12, 20])
         
         # 保存文件
         import os

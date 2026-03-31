@@ -2,14 +2,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Q, Sum
 from django.views.decorators.http import require_GET, require_POST
-from django.views.decorators.cache import cache_page
+
 from django.core.paginator import Paginator
 
 from ..models import Category, Supplier, InboundRecord
 from .utils import admin_required, log_operation, save_with_generated_code, create_user_for_supplier, combined_permission_required
 
 
-@combined_permission_required(perm='inventory.view_supplier', roles=['admin'])
+@combined_permission_required(perm='inventory.view_supplier', roles=['admin', 'management'])
 def supplier_list(request):
     suppliers = Supplier.objects.all()
     q = request.GET.get('q', '')
@@ -47,7 +47,7 @@ def supplier_list(request):
     })
 
 
-@combined_permission_required(perm='inventory.change_supplier', roles=['admin'])
+@combined_permission_required(perm='inventory.change_supplier', roles=['admin', 'management'])
 def supplier_save(request):
     if request.method == 'POST':
         pk = request.POST.get('id')
@@ -91,7 +91,7 @@ def supplier_save(request):
     return redirect('supplier_list')
 
 
-@combined_permission_required(perm='inventory.delete_supplier', roles=['admin'])
+@combined_permission_required(perm='inventory.delete_supplier', roles=['admin', 'management'])
 @require_POST
 def supplier_delete(request, pk):
     obj = get_object_or_404(Supplier, pk=pk)
@@ -103,7 +103,7 @@ def supplier_delete(request, pk):
     return JsonResponse({'success': True})
 
 
-@combined_permission_required(perm='inventory.view_supplier', roles=['admin'])
+@combined_permission_required(perm='inventory.view_supplier', roles=['admin', 'management'])
 @require_GET
 def supplier_detail_api(request, pk):
     obj = get_object_or_404(Supplier, pk=pk)
@@ -115,7 +115,7 @@ def supplier_detail_api(request, pk):
     return JsonResponse(data)
 
 
-@combined_permission_required(perm='inventory.view_supplier', roles=['admin'])
+@combined_permission_required(perm='inventory.view_supplier', roles=['admin', 'management'])
 @require_GET
 def check_supplier_duplicate(request):
     """检查供应商是否重复（用于前端实时查重）"""

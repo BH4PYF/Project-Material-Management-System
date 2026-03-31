@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
-from django.views.decorators.cache import cache_page
+
 from django.core.paginator import Paginator
 
 from ..models import Project, InboundRecord
@@ -9,7 +9,7 @@ from ..services import ProjectService
 from .utils import admin_required, log_operation, parse_positive_decimal, combined_permission_required
 
 
-@combined_permission_required(perm='inventory.view_project', roles=['admin'])
+@combined_permission_required(perm='inventory.view_project', roles=['admin', 'management'])
 def project_list(request):
     q = request.GET.get('q', '')
     status_filter = request.GET.get('status', None)
@@ -31,7 +31,7 @@ def project_list(request):
     })
 
 
-@combined_permission_required(perm='inventory.change_project', roles=['admin'])
+@combined_permission_required(perm='inventory.change_project', roles=['admin', 'management'])
 def project_save(request):
     if request.method == 'POST':
         pk = request.POST.get('id')
@@ -49,7 +49,6 @@ def project_save(request):
         data = {
             'name': name,
             'manager': request.POST.get('manager', ''),
-            'location': request.POST.get('location', ''),
             'start_date': request.POST.get('start_date') or None,
             'end_date': request.POST.get('end_date') or None,
             'budget': budget,
@@ -73,7 +72,7 @@ def project_save(request):
     return redirect('project_list')
 
 
-@combined_permission_required(perm='inventory.delete_project', roles=['admin'])
+@combined_permission_required(perm='inventory.delete_project', roles=['admin', 'management'])
 @require_POST
 def project_delete(request, pk):
     success, error = ProjectService.delete_project(int(pk))
@@ -86,20 +85,20 @@ def project_delete(request, pk):
     return JsonResponse({'success': True})
 
 
-@combined_permission_required(perm='inventory.view_project', roles=['admin'])
+@combined_permission_required(perm='inventory.view_project', roles=['admin', 'management'])
 @require_GET
 def project_detail_api(request, pk):
     obj = get_object_or_404(Project, pk=pk)
     data = {
         'id': obj.pk, 'code': obj.code, 'name': obj.name, 'manager': obj.manager,
-        'location': obj.location, 'start_date': str(obj.start_date or ''),
+        'start_date': str(obj.start_date or ''),
         'end_date': str(obj.end_date or ''), 'budget': str(obj.budget),
         'status': obj.status, 'remark': obj.remark,
     }
     return JsonResponse(data)
 
 
-@combined_permission_required(perm='inventory.view_project', roles=['admin'])
+@combined_permission_required(perm='inventory.view_project', roles=['admin', 'management'])
 @require_GET
 def check_project_name(request):
     """检查项目名称是否重复（用于前端实时查重）"""

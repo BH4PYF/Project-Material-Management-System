@@ -213,8 +213,8 @@ def save_login_security_settings(request):
 @admin_required
 def user_list(request):
     from django.contrib.auth.models import Group
-    # 使用 prefetch_related 来减少数据库查询
-    users = User.objects.select_related('profile').prefetch_related('groups').all()
+    # 使用 prefetch_related 来减少数据库查询，按id排序
+    users = User.objects.select_related('profile').prefetch_related('groups').order_by('id')
     # 获取所有Django用户组
     groups = Group.objects.all().order_by('name')
     
@@ -387,13 +387,21 @@ def user_detail_api(request, pk):
 @admin_required
 def user_groups(request):
     """用户分组管理页面"""
-    from django.contrib.auth.models import Group
+    from ..models import Profile
     
-    # 获取所有Django用户组及其用户数量
-    groups = Group.objects.all().prefetch_related('user_set')
+    # 获取所有角色数据
+    roles = []
+    for role_code, role_name in Profile.ROLE_CHOICES:
+        # 统计每个角色的用户数量
+        user_count = Profile.objects.filter(role=role_code).count()
+        roles.append({
+            'code': role_code,
+            'name': role_name,
+            'user_count': user_count
+        })
     
     context = {
-        'groups': groups,
+        'roles': roles,
     }
     return render(request, 'inventory/user_groups.html', context)
 

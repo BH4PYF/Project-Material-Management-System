@@ -38,13 +38,6 @@ def is_admin(user):
     return hasattr(user, 'profile') and user.profile.is_admin
 
 
-def is_material_dept(user):
-    return hasattr(user, 'profile') and user.profile.is_material_dept
-
-
-def is_clerk(user):
-    return hasattr(user, 'profile') and user.profile.is_clerk
-
 
 def is_supplier(user):
     """判断是否为供应商"""
@@ -52,24 +45,24 @@ def is_supplier(user):
 
 
 def can_manage_inventory(user):
-    """判断用户是否可以管理入库记录（管理员、物资部、材料员）"""
+    """判断用户是否可以管理入库记录（管理员、管理层）"""
     if not hasattr(user, 'profile'):
         return False
-    return user.profile.is_admin or user.profile.is_material_dept or user.profile.is_clerk
+    return user.profile.is_admin or user.profile.is_management
 
 
 def can_manage_purchase_plan(user):
-    """判断用户是否可以管理采购计划（管理员、物资部、材料员）"""
+    """判断用户是否可以管理采购计划（管理员、管理层）"""
     if not hasattr(user, 'profile'):
         return False
-    return user.profile.is_admin or user.profile.is_material_dept or user.profile.is_clerk
+    return user.profile.is_admin or user.profile.is_management
 
 
 def can_manage_delivery(user):
-    """判断用户是否可以管理发货（管理员、物资部、供应商）"""
+    """判断用户是否可以管理发货（管理员、供应商）"""
     if not hasattr(user, 'profile'):
         return False
-    return user.profile.is_admin or user.profile.is_material_dept or user.profile.is_supplier
+    return user.profile.is_admin or user.profile.is_supplier
 
 
 def _permission_required(check_fn, deny_message=None):

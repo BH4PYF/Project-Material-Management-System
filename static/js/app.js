@@ -64,7 +64,18 @@ function _doDelete(url) {
         return resp.json();
     }).then(function(data) {
         if (data.success) {
-            location.reload();
+            showMsg('删除成功', 'success');
+            // 等待用户关闭消息弹窗后再刷新页面
+            const msgModalEl = document.getElementById('msgModal');
+            if (msgModalEl) {
+                msgModalEl.addEventListener('hidden.bs.modal', function onHidden() {
+                    msgModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                    location.reload();
+                });
+            } else {
+                // 如果消息模态框不存在，1秒后刷新页面
+                setTimeout(() => location.reload(), 1000);
+            }
         } else {
             showMsg(data.error || '删除失败');
         }

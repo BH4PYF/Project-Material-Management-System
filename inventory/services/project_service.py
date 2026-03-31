@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Tuple
 from django.db.models import Q, Sum
 from django.db import transaction
 
-from inventory.models import Project, InboundRecord
+from inventory.models import Project, InboundRecord, PurchasePlan
 
 
 class ProjectService:
@@ -55,7 +55,6 @@ class ProjectService:
                 project = Project()
                 project.name = data['name']
                 project.manager = data.get('manager', '')
-                project.location = data.get('location', '')
                 project.start_date = data.get('start_date') or None
                 project.end_date = data.get('end_date') or None
                 project.budget = data.get('budget', Decimal('0'))
@@ -84,7 +83,6 @@ class ProjectService:
                 
                 project.name = data['name']
                 project.manager = data.get('manager', '')
-                project.location = data.get('location', '')
                 project.start_date = data.get('start_date') or None
                 project.end_date = data.get('end_date') or None
                 project.budget = data.get('budget', Decimal('0'))
@@ -108,11 +106,23 @@ class ProjectService:
             if InboundRecord.all_objects.filter(project=project).exists():
                 return False, '该项目已有入库记录，无法删除'
             
+            # 检查是否有采购计划
+            if PurchasePlan.all_objects.filter(project=project).exists():
+                return False, '该项目已有采购计划，无法删除'
+            
             project.delete()
             return True, None
         except Project.DoesNotExist:
             return False, '项目不存在'
         except Exception as e:
+            # 捕获外键保护异常
+            if 'protected foreign keys' in str(e):
+                if 'PurchasePlan.project' in str(e):
+                    return False, '该项目已有采购计划，无法删除'
+                elif 'InboundRecord.project' in str(e):
+                    return False, '该项目已有入库记录，无法删除'
+                else:
+                    return False, '该项目被其他记录引用，无法删除'
             return False, str(e)
     
     @staticmethod

@@ -85,10 +85,6 @@
                                 <div class="fw-bold" id="infoProject">-</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small text-muted">项目地址</label>
-                                <div class="fw-bold" id="infoLocation">-</div>
-                            </div>
-                            <div class="col-md-6">
                                 <label class="form-label small text-muted">材料名称</label>
                                 <div class="fw-bold" id="infoMaterial">-</div>
                             </div>
@@ -224,7 +220,6 @@ function fillDeliveryInfo(delivery) {
     document.getElementById('infoDeliveryNo').textContent = delivery.no || '-';
     document.getElementById('infoShipTime').textContent = delivery.ship_time || '-';
     document.getElementById('infoProject').textContent = delivery.project_name || '-';
-    document.getElementById('infoLocation').textContent = delivery.project_location || '-';
     document.getElementById('infoMaterial').textContent = delivery.material_name || '-';
     document.getElementById('infoSpec').textContent = delivery.material_spec || '-';
     document.getElementById('infoQuantity').textContent = delivery.quantity || '-';
@@ -249,17 +244,12 @@ async function submitForm(e) {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 处理中...';
 
         try {
-            // 自动添加收货日期（今天）和项目地址
+            // 自动添加收货日期（今天）
             const today = new Date().toISOString().split('T')[0];
-            let location = '';
-            if (currentDelivery && currentDelivery.project_location) {
-                location = currentDelivery.project_location;
-            }
 
             const formData = new FormData();
             formData.append('delivery_id', document.getElementById('deliveryId').value);
             formData.append('receive_date', today);
-            formData.append('location', location);
             formData.append('remark', '');
             formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
@@ -311,7 +301,6 @@ function resetForm() {
     document.getElementById('infoDeliveryNo').textContent = '-';
     document.getElementById('infoShipTime').textContent = '-';
     document.getElementById('infoProject').textContent = '-';
-    document.getElementById('infoLocation').textContent = '-';
     document.getElementById('infoMaterial').textContent = '-';
     document.getElementById('infoSpec').textContent = '-';
     document.getElementById('infoQuantity').textContent = '-';
