@@ -104,7 +104,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
         <table class="table table-hover mb-0 table-project-list">
-            <thead><tr><th>项目编号</th><th>项目名称 <span class="text-danger">*</span></th><th>负责人</th><th>状态</th><th>预算(元)</th><th>开工日期</th><th>竣工日期</th><th>入库总额</th><th>操作</th></tr></thead>
+            <thead><tr><th>项目编号</th><th>项目名称 <span class="text-danger">*</span></th><th>负责人 <span class="text-danger">*</span></th><th>状态 <span class="text-danger">*</span></th><th>预算(元) <span class="text-danger">*</span></th><th>开工日期 <span class="text-danger">*</span></th><th>竣工日期 <span class="text-danger">*</span></th><th>入库总额</th><th>操作</th></tr></thead>
             <tbody>
             <!-- 新增行 -->
             <form method="post" action="{% url 'project_save' %}" class="d-contents" data-ajax>
@@ -116,18 +116,19 @@
                         <input type="text" class="form-control form-control-sm" name="name" id="newProjectName" placeholder="项目名称" required onblur="checkProjectName(this.value, null)">
                         <div id="projectNameCheckResult" class="invalid-feedback" style="display: none;"></div>
                     </td>
-                    <td><input type="text" class="form-control form-control-sm" name="manager" placeholder="负责人"></td>
+                    <td><input type="text" class="form-control form-control-sm" name="manager" placeholder="负责人" required></td>
                     <td>
-                        <select class="form-select form-select-sm" name="status">
+                        <select class="form-select form-select-sm" name="status" required>
+                            <option value="">请选择</option>
                             <option value="planning">筹备中</option>
                             <option value="active">进行中</option>
                             <option value="completed">已完工</option>
                             <option value="paused">暂停</option>
                         </select>
                     </td>
-                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="budget" value="0" placeholder="预算"></td>
-                    <td><input type="date" class="form-control form-control-sm" name="start_date"></td>
-                    <td><input type="date" class="form-control form-control-sm" name="end_date"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="budget" value="0" placeholder="预算" required></td>
+                    <td><input type="date" class="form-control form-control-sm" name="start_date" required></td>
+                    <td><input type="date" class="form-control form-control-sm" name="end_date" required></td>
                     <td><small class="text-muted">-</small></td>
                     <td><button type="submit" class="btn btn-sm btn-success" id="createBtn"><i class="bi bi-plus-lg"></i> 创建</button></td>
                 </tr>

@@ -16,8 +16,8 @@
                     <select class="form-select" name="purchase_plan_id" id="planSelect" required onchange="onPlanChange(this)">
                         <option value="">请选择采购计划</option>
                         {% for plan in purchase_plans %}
-                        <option value="{{ plan.id }}" data-material="{{ plan.material.name }}" data-quantity="{{ plan.quantity }}" data-unit="{{ plan.material.unit }}" data-price="{{ plan.unit_price }}">
-                            {{ plan.no }} - {{ plan.project.name }} - {{ plan.material.name }} ({{ plan.quantity }}{{ plan.material.unit }})
+                        <option value="{{ plan.id }}" data-material="{{ plan.material.name }}" data-quantity="{{ plan.quantity }}" data-unit="{{ plan.material.unit }}" data-price="{{ plan.unit_price }}" data-spec="{{ plan.spec }}">
+                            {{ plan.no }} - {{ plan.project.name }} - {{ plan.material.name }} ({{ plan.spec|default:'' }}) ({{ plan.quantity }}{{ plan.material.unit }})
                         </option>
                         {% endfor %}
                     </select>

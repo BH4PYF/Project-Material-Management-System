@@ -381,6 +381,18 @@ tr.table-primary {
     color: #1f2937;
 }
 
+/* 增加下拉列表宽度以显示完整内容 */
+.form-select {
+    min-width: 200px;
+}
+
+/* 材料选择下拉列表增加宽度 */
+select[name="material"],
+select[name="material_id"],
+select[name="purchase_plan_id"] {
+    min-width: 300px;
+}
+
 .form-control:focus,
 .form-select:focus {
     border-color: #3b82f6;

@@ -108,7 +108,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
         <table class="table table-hover mb-0 table-material-list">
-            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>分类 <span class="text-danger">*</span></th><th>规格</th><th>单位 <span class="text-danger">*</span></th><th>标准单价</th><th>累计入库量</th><th>加权成本</th><th>操作</th></tr></thead>
+            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>分类 <span class="text-danger">*</span></th><th>规格 <span class="text-danger">*</span></th><th>单位 <span class="text-danger">*</span></th><th>标准单价 <span class="text-danger">*</span></th><th>累计入库量</th><th>加权成本</th><th>操作</th></tr></thead>
             <tbody>
             <!-- 新增行 -->
             <form method="post" action="{% url 'material_save' %}" class="d-contents" data-ajax>
@@ -126,7 +126,7 @@
                             {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
                         </select>
                     </td>
-                    <td><input type="text" class="form-control form-control-sm" name="spec" id="newMaterialSpec" placeholder="规格" onblur="checkMaterialDuplicate()"></td>
+                    <td><input type="text" class="form-control form-control-sm" name="spec" id="newMaterialSpec" placeholder="规格" required onblur="checkMaterialDuplicate()"></td>
                     <td>
                         <select class="form-select form-select-sm" name="unit" id="newMaterialUnit" required>
                             <option value="">请选择</option>
@@ -135,7 +135,7 @@
                             <option>箱</option><option>袋</option><option>卷</option><option>块</option><option>张</option><option>件</option>
                         </select>
                     </td>
-                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="standard_price" value="0" placeholder="单价"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="standard_price" value="0" placeholder="单价" required></td>
                     <td></td>
                     <td></td>
                     <td><button type="submit" class="btn btn-sm btn-success" id="createMaterialBtn"><i class="bi bi-plus-lg"></i> 创建</button></td>

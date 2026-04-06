@@ -203,6 +203,8 @@ class Material(models.Model):
         ordering = ['code']
 
     def __str__(self):
+        if self.spec:
+            return f"{self.code} - {self.name} ({self.spec})"
         return f"{self.code} - {self.name}"
 
     def get_total_inbound(self, project_id=None, start_date=None, end_date=None):

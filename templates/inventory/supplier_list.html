@@ -96,7 +96,7 @@
     <div class="card-body p-0">
         <div class="table-responsive">
         <table class="table table-hover mb-0 table-supplier-list">
-            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>联系人</th><th>电话</th><th>主营类型</th><th>信用等级</th><th>累计采购额</th><th>操作</th></tr></thead>
+            <thead><tr><th>编号</th><th>名称 <span class="text-danger">*</span></th><th>联系人 <span class="text-danger">*</span></th><th>电话 <span class="text-danger">*</span></th><th>主营类型 <span class="text-danger">*</span></th><th>信用等级 <span class="text-danger">*</span></th><th>累计采购额</th><th>操作</th></tr></thead>
             <tbody>
             <!-- 新增行 -->
             <form method="post" action="{% url 'supplier_save' %}" class="d-contents" data-ajax>
@@ -105,10 +105,10 @@
                 <tr class="table-light">
                     <td><small class="text-muted">(自动生成)</small></td>
                     <td><input type="text" class="form-control form-control-sm" name="name" id="newSupplierName" placeholder="供应商名称" required onblur="checkSupplierDuplicate()"></td>
-                    <td><input type="text" class="form-control form-control-sm" name="contact" placeholder="联系人"></td>
-                    <td><input type="text" class="form-control form-control-sm" name="phone" placeholder="联系电话"></td>
+                    <td><input type="text" class="form-control form-control-sm" name="contact" placeholder="联系人" required></td>
+                    <td><input type="text" class="form-control form-control-sm" name="phone" placeholder="联系电话" required></td>
                     <td>
-                        <select class="form-select form-select-sm" name="main_type">
+                        <select class="form-select form-select-sm" name="main_type" required>
                             <option value="">请选择</option>
                             {% for cat in categories %}
                             <option value="{{ cat.id }}">{{ cat.name }}</option>
@@ -116,7 +116,8 @@
                         </select>
                     </td>
                     <td>
-                        <select class="form-select form-select-sm" name="credit_rating">
+                        <select class="form-select form-select-sm" name="credit_rating" required>
+                            <option value="">请选择</option>
                             <option value="excellent">优秀</option>
                             <option value="good" selected>良好</option>
                             <option value="average">一般</option>

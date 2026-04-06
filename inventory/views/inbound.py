@@ -68,7 +68,7 @@ def inbound_list(request):
 
     projects = Project.objects.only('id', 'code', 'name').all()
     materials = Material.objects.select_related('category').only(
-        'id', 'code', 'name', 'category__name',
+        'id', 'code', 'name', 'spec', 'category__name',
     ).all()
     suppliers = Supplier.objects.only('id', 'code', 'name').all()
     return render(request, 'inventory/inbound_list.html', {
