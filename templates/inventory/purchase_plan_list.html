@@ -101,7 +101,7 @@
             <tr>
                 <td><small>{{ plan.no }}</small></td>
                 <td>{{ plan.project.name }}</td>
-                <td>{{ plan.material.name }}</td>
+                <td>{{ plan.material }}</td>
                 <td>{{ plan.material.unit|default:'-' }}</td>
                 <td><small class="text-muted scrollable-cell">{{ plan.spec|default:'-' }}</small></td>
                 <td>{{ plan.quantity|floatformat:2 }}</td>

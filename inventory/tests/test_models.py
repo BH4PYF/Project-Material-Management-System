@@ -50,7 +50,7 @@ class MaterialModelTest(TestCase):
         self.assertEqual(self.material.unit, "吨")
 
     def test_material_str(self):
-        self.assertEqual(str(self.material), "HRB400 - 螺纹钢")
+        self.assertEqual(str(self.material), "HRB400 - 螺纹钢 (Φ25)")
 
     def test_get_total_inbound(self):
         stock = self.material.get_total_inbound()
