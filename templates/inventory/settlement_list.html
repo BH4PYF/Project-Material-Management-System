@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}分包结算{% endblock %}
+{% block page_title %}分包结算{% endblock %}
+{% block content %}
+<style>
+    .table-settlement-list th:nth-child(1),
+    .table-settlement-list td:nth-child(1) {
+        width: 120px;
+        min-width: 100px;
+    }
+    .table-settlement-list th:nth-child(2),
+    .table-settlement-list td:nth-child(2) {
+        width: 180px;
+        min-width: 140px;
+    }
+    .table-settlement-list th:nth-child(3),
+    .table-settlement-list td:nth-child(3) {
+        width: 150px;
+        min-width: 120px;
+    }
+    .table-settlement-list th:nth-child(4),
+    .table-settlement-list td:nth-child(4) {
+        width: 120px;
+        min-width: 100px;
+    }
+    .table-settlement-list th:nth-child(5),
+    .table-settlement-list td:nth-child(5) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-settlement-list th:nth-child(6),
+    .table-settlement-list td:nth-child(6) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-settlement-list th:nth-child(7),
+    .table-settlement-list td:nth-child(7) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-settlement-list th:nth-child(8),
+    .table-settlement-list td:nth-child(8) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .table-settlement-list td:nth-child(8) .btn {
+        margin-right: 4px;
+    }
+    .table-settlement-list td:nth-child(8) .btn:last-child {
+        margin-right: 0;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-receipt-cutoff"></i> 分包结算</h5>
+    <div>
+        <a href="{% url 'export_settlements' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end" id="filterForm">
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="project" id="filterProject">
+                <option value="">全部项目</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if selected_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="subcontractor" id="filterSubcontractor">
+                <option value="">全部分包商</option>
+                {% for s in subcontractors %}
+                <option value="{{ s.id }}" {% if selected_subcontractor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 筛选</button></div>
+        <div class="col-auto"><a href="{% url 'settlement_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> 重置</a></div>
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-success" onclick="location.href='{% url 'settlement_create' %}'"><i class="bi bi-plus-lg"></i> 创建结算</button></div>
+    </form>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 table-settlement-list">
+                <thead>
+                    <tr>
+                        <th>结算编号</th>
+                        <th>项目名称</th>
+                        <th>分包商</th>
+                        <th>合同编号</th>
+                        <th>计量产值</th>
+                        <th>扣款金额</th>
+                        <th>最终结算额</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if settlements %}
+                    {% for settlement in settlements %}
+                    <tr>
+                        <td>{{ settlement.code }}</td>
+                        <td>{{ settlement.project.name }}</td>
+                        <td>{{ settlement.subcontractor.name }}</td>
+                        <td>{{ settlement.contract.code }}</td>
+                        <td>¥{{ settlement.measurement_value|floatformat:2 }}</td>
+                        <td>¥{{ settlement.deduction_amount|floatformat:2 }}</td>
+                        <td>¥{{ settlement.final_amount|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'settlement_detail' settlement.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'settlement_edit' settlement.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSettlement({{ settlement.pk }}, '{{ settlement.code }}')"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <i class="bi bi-file-earmark-text fs-1 text-muted d-block mb-3"></i>
+                            <h6 class="text-muted">暂无分包结算数据</h6>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteSettlementModal" tabindex="-1" aria-labelledby="deleteSettlementModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteSettlementModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除结算 <strong id="deleteSettlementCode"></strong> 吗？</p>
+                <p class="text-danger">此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteSettlementForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteSettlement(pk, code) {
+    document.getElementById('deleteSettlementCode').textContent = code;
+    document.getElementById('deleteSettlementForm').action = '{% url "settlement_delete" 0 %}'.replace('0', pk);
+    const modal = new bootstrap.Modal(document.getElementById('deleteSettlementModal'));
+    modal.show();
+}
+
+function initSearchableSelect(selectId) {
+    var select = document.getElementById(selectId);
+    if (!select) return;
+    var wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'inline-block';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = select.options[0].text;
+    input.style.width = '180px';
+    wrapper.appendChild(input);
+    var dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-menu';
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;z-index:1000;max-height:200px;overflow-y:auto;width:100%;';
+    wrapper.appendChild(dropdown);
+    var currentVal = select.value;
+    if (currentVal) {
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == currentVal) {
+                input.value = select.options[i].text;
+                break;
+            }
+        }
+    }
+    function renderOptions(filter) {
+        dropdown.innerHTML = '';
+        var f = (filter || '').toLowerCase();
+        for (var i = 0; i < select.options.length; i++) {
+            var opt = select.options[i];
+            if (!opt.value) continue;
+            if (f && opt.text.toLowerCase().indexOf(f) === -1) continue;
+            var item = document.createElement('a');
+            item.className = 'dropdown-item';
+            item.href = '#';
+            item.textContent = opt.text;
+            item.setAttribute('data-value', opt.value);
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                select.value = this.getAttribute('data-value');
+                input.value = this.textContent;
+                dropdown.classList.remove('show');
+            });
+            dropdown.appendChild(item);
+        }
+        if (dropdown.children.length === 0) {
+            var empty = document.createElement('span');
+            empty.className = 'dropdown-item text-muted';
+            empty.textContent = '无匹配项';
+            dropdown.appendChild(empty);
+        }
+        dropdown.classList.add('show');
+    }
+    input.addEventListener('focus', function() { renderOptions(this.value); });
+    input.addEventListener('input', function() { renderOptions(this.value); });
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) dropdown.classList.remove('show');
+    });
+}
+initSearchableSelect('filterProject');
+initSearchableSelect('filterSubcontractor');
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 """
-Django settings for material_system project.
-材料管理系统
+Django settings for minierp project.
+项目管理系统
 """
 import os
 import sys
@@ -37,7 +37,7 @@ if SENTRY_DSN and not DEBUG:
         },
         # 环境标识
         environment=os.getenv('SENTRY_ENVIRONMENT', 'production'),
-        release=f'material-system@{os.getenv("APP_VERSION", "dev")}',
+        release=f'minierp@{os.getenv("APP_VERSION", "dev")}',
     )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -116,12 +116,12 @@ MIDDLEWARE = [
 
 if DEBUG:
     # 开发环境：添加性能分析中间件（可选）
-    MIDDLEWARE.append('material_system.middleware.ProfileMiddleware')
+    MIDDLEWARE.append('minierp.middleware.ProfileMiddleware')
 else:
     # 生产环境：启用慢请求监控中间件
-    MIDDLEWARE.append('material_system.middleware.SlowRequestMiddleware')
+    MIDDLEWARE.append('minierp.middleware.SlowRequestMiddleware')
 
-ROOT_URLCONF = 'material_system.urls'
+ROOT_URLCONF = 'minierp.urls'
 
 TEMPLATES = [
     {
@@ -140,7 +140,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'material_system.wsgi.application'
+WSGI_APPLICATION = 'minierp.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -379,9 +379,9 @@ if not APP_ENV:
     APP_ENV = 'prod' if not DEBUG else 'dev'
 
 _ENV_MODULES = {
-    'dev': 'material_system.settings_dev',
-    'prod': 'material_system.settings_prod',
-    'test': 'material_system.settings_test',
+    'dev': 'minierp.settings_dev',
+    'prod': 'minierp.settings_prod',
+    'test': 'minierp.settings_test',
 }
 _module_path = _ENV_MODULES.get(APP_ENV)
 if _module_path:

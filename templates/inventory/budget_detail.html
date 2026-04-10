@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}分包预算详情{% endblock %}
+{% block page_title %}分包预算详情{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-sm-6">
+                <h5 class="card-title">预算详情</h5>
+                <p class="text-muted">编号：{{ budget.code }}</p>
+            </div>
+            <div class="col-sm-6 text-end">
+                <a href="{% url 'export_budget_detail' budget.pk %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+                <a href="{% url 'budget_edit' budget.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> 编辑</a>
+                <a href="{% url 'budget_delete' budget.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> 删除</a>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>项目名称：</strong>{{ budget.project.name }}</div>
+                <div class="mb-2"><strong>预算总额：</strong><span class="text-primary">{{ budget.get_budget_total|floatformat:2 }}</span></div>
+            </div>
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>实际产值：</strong><span class="text-primary">{{ budget.get_actual_value|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>完成进度：</strong>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ budget.get_completion_progress }}%;" aria-valuenow="{{ budget.get_completion_progress }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ budget.get_completion_progress }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h6 class="mb-3">预算清单</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>清单序号</th>
+                        <th>清单名称</th>
+                        <th>分类</th>
+                        <th>施工参数</th>
+                        <th>计量单位</th>
+                        <th>工程量</th>
+                        <th>单价</th>
+                        <th>合价</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in budget.budget_items.all %}
+                    <tr>
+                        <td>{{ item.item_order }}</td>
+                        <td>{{ item.subcontract_list.name }}</td>
+                        <td>{{ item.subcontract_list.category }}</td>
+                        <td>{{ item.subcontract_list.construction_params }}</td>
+                        <td>{{ item.subcontract_list.unit }}</td>
+                        <td>{{ item.quantity|floatformat:2 }}</td>
+                        <td>{{ item.unit_price|floatformat:2 }}</td>
+                        <td>{{ item.total_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">暂无预算清单数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-sm-12">
+                <a href="{% url 'budget_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

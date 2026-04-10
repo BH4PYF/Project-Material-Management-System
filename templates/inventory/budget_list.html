@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}分包预算{% endblock %}
+{% block page_title %}分包预算{% endblock %}
+{% block content %}
+<style>
+    /* 分包预算列表列宽优化 */
+    .table-budget-list th:nth-child(1),  /* 编号 */
+    .table-budget-list td:nth-child(1) {
+        width: 80px;
+        min-width: 60px;
+    }
+    .table-budget-list th:nth-child(2),  /* 项目名称 */
+    .table-budget-list td:nth-child(2) {
+        width: 250px;
+        min-width: 200px;
+        max-width: 300px;
+    }
+    .table-budget-list th:nth-child(3),  /* 预算总额 */
+    .table-budget-list td:nth-child(3) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-budget-list th:nth-child(4),  /* 实际产值 */
+    .table-budget-list td:nth-child(4) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-budget-list th:nth-child(5),  /* 完成进度 */
+    .table-budget-list td:nth-child(5) {
+        width: 150px;
+        min-width: 120px;
+    }
+    .table-budget-list th:nth-child(6),  /* 操作 */
+    .table-budget-list td:nth-child(6) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-budget-list td:nth-child(6) .btn {
+        margin-right: 4px;
+    }
+    .table-budget-list td:nth-child(6) .btn:last-child {
+        margin-right: 0;
+    }
+    
+    /* 创建按钮宽度调整 */
+    .table-budget-list tr:first-child td:nth-child(6) .btn {
+        min-width: 70px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    
+    /* 创建按钮居中显示 */
+    .table-budget-list tr:first-child td:nth-child(6) {
+        text-align: center;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-calculator"></i> 分包预算</h5>
+    <div>
+        <a href="{% url 'export_budgets' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-success" onclick="location.href='{% url 'budget_create' %}'"><i class="bi bi-plus-lg"></i> 创建预算</button></div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-budget-list">
+            <thead><tr><th>编号</th><th>项目名称</th><th>预算总额</th><th>实际产值</th><th>完成进度</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for b in budgets %}
+            <tr>
+                <td>{{ b.code }}</td><td>{{ b.project.name }}</td>
+                <td class="text-right">{{ b.get_budget_total|floatformat:2 }}</td>
+                <td class="text-right">{{ b.get_actual_value|floatformat:2 }}</td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ b.get_completion_progress }}%;" aria-valuenow="{{ b.get_completion_progress }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ b.get_completion_progress|floatformat:1 }}%
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <a href="{% url 'budget_detail' b.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'budget_edit' b.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteItem({{ b.pk }}, '{{ b.code }}', 'budget')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-5">
+                    <i class="bi bi-calculator fs-1 text-muted d-block mb-3"></i>
+                    <h6 class="text-muted">暂无分包预算数据</h6>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除 <strong id="deleteItemName"></strong> 吗？</p>
+                <p class="text-danger">此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteItem(pk, name, type) {
+    document.getElementById('deleteItemName').textContent = name;
+    document.getElementById('deleteForm').action = '/' + type + 's/' + pk + '/delete/';
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

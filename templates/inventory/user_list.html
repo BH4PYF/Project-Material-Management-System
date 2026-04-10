@@ -47,7 +47,7 @@
                         <select class="form-select form-select-sm" name="role" required>
                             <option value="">请选择角色</option>
                             {% for role in role_list %}
-                            <option value="{{ role.code }}" {% if role.code == 'clerk' %}selected{% endif %}>{{ role.name }}</option>
+                            <option value="{{ role.code }}">{{ role.name }}</option>
                             {% endfor %}
                         </select>
                     </td>
@@ -83,14 +83,14 @@
                 <td>
                     {% if u.profile.role == 'admin' %}
                         <span class="badge bg-danger"><i class="bi bi-shield-fill"></i> 管理员</span>
-                    {% elif u.profile.role == 'material_dept' %}
-                        <span class="badge bg-warning text-dark"><i class="bi bi-building"></i> 物资部</span>
                     {% elif u.profile.role == 'management' %}
                         <span class="badge bg-purple text-white"><i class="bi bi-people"></i> 管理层</span>
-                    {% elif u.profile.role == 'clerk' %}
-                        <span class="badge bg-info"><i class="bi bi-person-workspace"></i> 材料员</span>
                     {% elif u.profile.role == 'supplier' %}
-                        <span class="badge bg-secondary"><i class="bi bi-truck"></i> 供应商</span>
+                        <span class="badge bg-warning text-dark"><i class="bi bi-truck"></i> 供应商</span>
+                    {% elif u.profile.role == 'subcontractor' %}
+                        <span class="badge bg-success"><i class="bi bi-person-badge"></i> 分包商</span>
+                    {% else %}
+                        <span class="badge bg-info"><i class="bi bi-person-workspace"></i> {{ u.profile.get_role_display }}</span>
                     {% endif %}
                 </td>
                 <td><small class="text-muted">{{ u.profile.phone|default:'-' }}</small></td>
@@ -159,9 +159,18 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-medium">角色/分组 <span class="text-danger">*</span></label>
-                            <select class="form-select" name="role" id="uRole" required>
+                            <select class="form-select" name="role" id="uRole" required onchange="toggleSubcontractorSelect()">
                                 {% for role in role_list %}
                                 <option value="{{ role.code }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="subcontractorSelectGroup" style="display:none;">
+                            <label class="form-label fw-medium">关联分包商 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="subcontractor_id" id="uSubcontractor">
+                                <option value="">请选择分包商</option>
+                                {% for s in subcontractors %}
+                                <option value="{{ s.id }}">{{ s.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -189,6 +198,16 @@
 
 {% block extra_js %}
 <script>
+function toggleSubcontractorSelect() {
+    var role = document.getElementById('uRole').value;
+    var group = document.getElementById('subcontractorSelectGroup');
+    if (role === 'subcontractor') {
+        group.style.display = '';
+    } else {
+        group.style.display = 'none';
+    }
+}
+
 function editUser(pk){
     fetch('{% url 'user_detail_api' 0 %}'.replace('0', pk))
     .then(response => {
@@ -205,6 +224,12 @@ function editUser(pk){
         document.getElementById('uRole').value = d.role;
         document.getElementById('uPhone').value = d.phone;
         document.getElementById('uActive').checked = d.is_active;
+        if (d.subcontractor_id) {
+            document.getElementById('uSubcontractor').value = d.subcontractor_id;
+        } else {
+            document.getElementById('uSubcontractor').value = '';
+        }
+        toggleSubcontractorSelect();
         document.getElementById('userModalTitle').innerHTML = '<i class="bi bi-person-gear text-primary"></i> 编辑用户';
         new bootstrap.Modal(document.getElementById('userModal')).show();
     })

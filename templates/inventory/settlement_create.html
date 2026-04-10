@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}创建分包结算{% endblock %}
+{% block page_title %}创建分包结算{% endblock %}
+{% block content %}
+<style>
+    .settlement-item-table th,
+    .settlement-item-table td {
+        vertical-align: middle;
+    }
+    .settlement-item-table input {
+        width: 100%;
+    }
+    .add-item-btn {
+        margin-top: 24px;
+    }
+</style>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" action="{% url 'settlement_create' %}">
+            {% csrf_token %}
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">合同名称 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <select class="form-select" name="contract" id="contractSelect" required>
+                        <option value="">请选择合同</option>
+                        {% for c in contracts %}
+                        <option value="{{ c.pk }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">结算周期开始 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <input type="date" class="form-control" name="period_start" id="periodStart" required>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">结算周期结束 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <input type="date" class="form-control" name="period_end" id="periodEnd" required>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">扣款原因</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" name="deduction_reason" placeholder="请输入扣款原因">
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">扣款金额</label>
+                <div class="col-sm-10">
+                    <input type="number" step="0.01" class="form-control" name="deduction_amount" value="0">
+                </div>
+            </div>
+            
+            <h6 class="mb-3">结算清单</h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-hover settlement-item-table" id="settlementItemTable">
+                    <thead>
+                        <tr>
+                            <th>清单序号</th>
+                            <th>清单名称 <span class="text-danger">*</span></th>
+                            <th>分类</th>
+                            <th>施工参数</th>
+                            <th>计量单位</th>
+                            <th>计量汇总工程量</th>
+                            <th>修正后工程量 <span class="text-danger">*</span></th>
+                            <th>单价 <span class="text-danger">*</span></th>
+                            <th>最终产值</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-sm-10 offset-sm-2">
+                    <button type="button" class="btn btn-sm btn-outline-success add-item-btn" id="addSettlementItemBtn"><i class="bi bi-plus-lg"></i> 添加清单</button>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-sm-10 offset-sm-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> 保存</button>
+                    <a href="{% url 'settlement_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let subcontractListItems = [];
+        
+        document.getElementById('contractSelect').addEventListener('change', function() {
+            const contractId = this.value;
+            if (contractId) {
+                fetch(`/api/subcontract-lists-by-contract/?contract_id=${contractId}`)
+                    .then(response => response.json())
+                    .then(subcontractData => {
+                        subcontractListItems = subcontractData.items || [];
+                        
+                        fetch(`/api/measurements-by-contract/?contract_id=${contractId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.measurements && data.measurements.length > 0) {
+                                    const firstMeasurement = data.measurements[data.measurements.length - 1];
+                                    const lastMeasurement = data.measurements[0];
+                                    document.getElementById('periodStart').value = firstMeasurement.period_start;
+                                    document.getElementById('periodEnd').value = lastMeasurement.period_end;
+                                    
+                                    populateSettlementItems(data.items);
+                                } else {
+                                    document.getElementById('periodStart').value = '';
+                                    document.getElementById('periodEnd').value = '';
+                                    clearSettlementItems();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('加载进度计量失败:', error);
+                            });
+                    })
+                    .catch(error => {
+                        console.error('加载分包清单失败:', error);
+                    });
+            } else {
+                clearSettlementItems();
+            }
+        });
+        
+        function buildSubcontractListOptions(selectedId) {
+            let html = '<option value="">请选择清单</option>';
+            subcontractListItems.forEach(item => {
+                const selected = (selectedId && item.id == selectedId) ? ' selected' : '';
+                html += `<option value="${item.id}" data-category="${item.category || ''}" data-params="${item.construction_params || ''}" data-unit="${item.unit || ''}" data-quantity="${item.quantity || 0}" data-unit-price="${item.unit_price || 0}"${selected}>${item.name}</option>`;
+            });
+            return html;
+        }
+        
+        function populateSettlementItems(items) {
+            const tbody = document.querySelector('#settlementItemTable tbody');
+            tbody.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const row = createSettlementItemRow(index + 1, item);
+                tbody.appendChild(row);
+            });
+            
+            if (items.length === 0) {
+                addEmptySettlementItemRow();
+            }
+        }
+        
+        function clearSettlementItems() {
+            const tbody = document.querySelector('#settlementItemTable tbody');
+            tbody.innerHTML = '';
+            addEmptySettlementItemRow();
+        }
+        
+        function addEmptySettlementItemRow() {
+            const tbody = document.querySelector('#settlementItemTable tbody');
+            const rowCount = tbody.children.length + 1;
+            const row = createSettlementItemRow(rowCount, null);
+            tbody.appendChild(row);
+        }
+        
+        function createSettlementItemRow(order, item) {
+            const row = document.createElement('tr');
+            row.className = 'settlement-item-row';
+            
+            const selectedId = item ? item.subcontract_list_id : '';
+            const optionsHtml = buildSubcontractListOptions(selectedId);
+            
+            row.innerHTML = `
+                <td><input type="number" class="form-control form-control-sm" name="item_order" value="${order}" required></td>
+                <td>
+                    <select class="form-select form-select-sm subcontract-list-select" name="subcontract_list" required>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td><input type="text" class="form-control form-control-sm category-input" name="category" readonly></td>
+                <td><input type="text" class="form-control form-control-sm params-input" name="construction_params" readonly></td>
+                <td><input type="text" class="form-control form-control-sm unit-input" name="unit" readonly></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm measurement-quantity-input" name="measurement_quantity" value="0" readonly></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm adjusted-quantity-input" name="adjusted_quantity" required></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm unit-price-input" name="unit_price" required></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm final-value-input" name="final_value" readonly></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger remove-item-btn"><i class="bi bi-trash"></i></button></td>
+            `;
+            
+            if (item) {
+                row.querySelector('.category-input').value = item.category || '';
+                row.querySelector('.params-input').value = item.construction_params || '';
+                row.querySelector('.unit-input').value = item.unit || '';
+                row.querySelector('.measurement-quantity-input').value = parseFloat(item.cumulative_quantity).toFixed(2);
+                row.querySelector('.adjusted-quantity-input').value = parseFloat(item.cumulative_quantity).toFixed(2);
+                row.querySelector('.unit-price-input').value = parseFloat(item.unit_price).toFixed(2);
+                calculateFinalValue(row);
+            }
+            
+            row.querySelector('.remove-item-btn').addEventListener('click', function() {
+                const tbody = this.closest('tbody');
+                if (tbody.children.length > 1) {
+                    this.closest('.settlement-item-row').remove();
+                    updateRowNumbers();
+                }
+            });
+            
+            return row;
+        }
+        
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('subcontract-list-select')) {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                const row = e.target.closest('.settlement-item-row');
+                
+                row.querySelector('.category-input').value = selectedOption.dataset.category || '';
+                row.querySelector('.params-input').value = selectedOption.dataset.params || '';
+                row.querySelector('.unit-input').value = selectedOption.dataset.unit || '';
+                row.querySelector('.unit-price-input').value = selectedOption.dataset.unitPrice || '';
+                calculateFinalValue(row);
+            }
+        });
+        
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('adjusted-quantity-input') || e.target.classList.contains('unit-price-input')) {
+                const row = e.target.closest('.settlement-item-row');
+                calculateFinalValue(row);
+            }
+        });
+        
+        function calculateFinalValue(row) {
+            const adjustedQuantity = parseFloat(row.querySelector('.adjusted-quantity-input').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('.unit-price-input').value) || 0;
+            const finalValue = adjustedQuantity * unitPrice;
+            row.querySelector('.final-value-input').value = finalValue.toFixed(2);
+        }
+        
+        document.getElementById('addSettlementItemBtn').addEventListener('click', function() {
+            addEmptySettlementItemRow();
+        });
+        
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('.settlement-item-row');
+            rows.forEach((row, index) => {
+                row.querySelector('input[name="item_order"]').value = index + 1;
+            });
+        }
+    });
+</script>
+{% endblock %}

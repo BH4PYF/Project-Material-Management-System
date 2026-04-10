@@ -184,14 +184,14 @@ fi
 
 # 清理旧备份
 log STEP "清理旧备份文件"
-# 本地保留30天
-find "$BACKUP_DIR_LOCAL" -name "material_project_*.tar.gz" -type f -mtime +30 -delete
-log INFO "已清理30天前的本地备份"
+# 本地保留7天
+find "$BACKUP_DIR_LOCAL" -name "material_project_*.tar.gz" -type f -mtime +7 -delete
+log INFO "已清理7天前的本地备份"
 
-# 网络共享保留90天
+# 网络共享保留30天
 if mountpoint -q "$BACKUP_DIR_NET"; then
-    find "$BACKUP_DIR_NET" -name "material_project_*.tar.gz" -type f -mtime +90 -delete
-    log INFO "已清理90天前的网络备份"
+    find "$BACKUP_DIR_NET" -name "material_project_*.tar.gz" -type f -mtime +30 -delete
+    log INFO "已清理30天前的网络备份"
 fi
 
 # 统计信息

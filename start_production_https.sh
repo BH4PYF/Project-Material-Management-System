@@ -1,5 +1,5 @@
 #!/bin/bash
-# 材料管理系统 - 生产环境启动脚本（HTTPS + Nginx）
+# 项目管理系统 - 生产环境启动脚本（HTTPS + Nginx）
 # 用法：sudo bash start_production_https.sh
 
 set -e  # 出错即停
@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  材料管理系统生产环境启动（HTTPS）${NC}"
+echo -e "${GREEN}  项目管理系统生产环境启动（HTTPS）${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # 检查是否以 root 运行
@@ -151,9 +151,9 @@ echo -e "${GREEN}✓ 数据库迁移完成${NC}"
 
 echo -e "\n${GREEN}[4/6] 启动 Gunicorn 后台服务...${NC}"
 # 停止现有的 Gunicorn 进程（如果有）
-if pgrep -f "gunicorn.*material_system" > /dev/null; then
+if pgrep -f "gunicorn.*minierp" > /dev/null; then
     echo -e "${YELLOW}停止现有的 Gunicorn 进程...${NC}"
-    pkill -f "gunicorn.*material_system" || true
+    pkill -f "gunicorn.*minierp" || true
     sleep 2
 fi
 
@@ -170,7 +170,7 @@ nohup gunicorn \
     --worker-class sync \
     --max-requests 1000 \
     --max-requests-jitter 100 \
-    material_system.wsgi:application > /dev/null 2>&1 &
+    minierp.wsgi:application > /dev/null 2>&1 &
 
 GUNICORN_PID=$!
 sleep 3

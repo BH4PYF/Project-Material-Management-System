@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}分包合同{% endblock %}
+{% block page_title %}分包合同{% endblock %}
+{% block content %}
+<style>
+    /* 分包合同列表列宽优化 */
+    .table-contract-list th:nth-child(1),  /* 合同编号 */
+    .table-contract-list td:nth-child(1) {
+        width: 90px;
+        min-width: 70px;
+    }
+    .table-contract-list th:nth-child(2),  /* 合同名称 */
+    .table-contract-list td:nth-child(2) {
+        width: 200px;
+        min-width: 150px;
+        max-width: 250px;
+    }
+    .table-contract-list th:nth-child(3),  /* 项目名称 */
+    .table-contract-list td:nth-child(3) {
+        width: 180px;
+        min-width: 140px;
+        max-width: 220px;
+    }
+    .table-contract-list th:nth-child(4),  /* 分包商 */
+    .table-contract-list td:nth-child(4) {
+        width: 180px;
+        min-width: 140px;
+        max-width: 220px;
+    }
+    .table-contract-list th:nth-child(5),  /* 合同总额 */
+    .table-contract-list td:nth-child(5) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-contract-list th:nth-child(6),  /* 实际产值 */
+    .table-contract-list td:nth-child(6) {
+        width: 120px;
+        min-width: 100px;
+        text-align: right;
+    }
+    .table-contract-list th:nth-child(7),  /* 进度 */
+    .table-contract-list td:nth-child(7) {
+        width: 200px;
+        min-width: 150px;
+    }
+    .table-contract-list th:nth-child(8),  /* 操作 */
+    .table-contract-list td:nth-child(8) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-contract-list td:nth-child(8) .btn {
+        margin-right: 4px;
+    }
+    .table-contract-list td:nth-child(8) .btn:last-child {
+        margin-right: 0;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-file-earmark-text"></i> 分包合同</h5>
+    <div>
+        <a href="{% url 'export_contracts' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end" id="filterForm">
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="project" id="filterProject">
+                <option value="">全部项目</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if selected_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="subcontractor" id="filterSubcontractor">
+                <option value="">全部分包商</option>
+                {% for s in subcontractors %}
+                <option value="{{ s.id }}" {% if selected_subcontractor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 筛选</button></div>
+        <div class="col-auto"><a href="{% url 'contract_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> 重置</a></div>
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-success" onclick="location.href='{% url 'contract_create' %}'"><i class="bi bi-plus-lg"></i> 创建合同</button></div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-contract-list">
+            <thead><tr><th>合同编号</th><th>合同名称</th><th>项目名称</th><th>分包商</th><th>合同总额</th><th>实际产值</th><th>进度</th><th></th>操作</th></tr></thead>
+            <tbody>
+            {% for c in contracts %}
+            <tr>
+                <td>{{ c.code }}</td><td>{{ c.name }}</td><td>{{ c.project.name }}</td><td>{{ c.subcontractor.name }}</td>
+                <td class="text-right">{{ c.get_contract_total|floatformat:2 }}</td>
+                <td class="text-right">{{ c.get_actual_value|floatformat:2 }}</td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ c.get_completion_progress|floatformat:1 }}%;" aria-valuenow="{{ c.get_completion_progress|floatformat:1 }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ c.get_completion_progress|floatformat:1 }}%
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <a href="{% url 'contract_detail' c.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'contract_edit' c.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteItem({{ c.pk }}, '{{ c.code }}', 'contract')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center py-5">
+                    <i class="bi bi-file-earmark-text fs-1 text-muted d-block mb-3"></i>
+                    <h6 class="text-muted">暂无分包合同数据</h6>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除 <strong id="deleteItemName"></strong> 吗？</p>
+                <p class="text-danger">此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteItem(pk, name, type) {
+    document.getElementById('deleteItemName').textContent = name;
+    document.getElementById('deleteForm').action = '/' + type + 's/' + pk + '/delete/';
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function initSearchableSelect(selectId) {
+    var select = document.getElementById(selectId);
+    if (!select) return;
+    var wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'inline-block';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = select.options[0].text;
+    input.style.width = '180px';
+    wrapper.appendChild(input);
+    var dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-menu';
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;z-index:1000;max-height:200px;overflow-y:auto;width:100%;';
+    wrapper.appendChild(dropdown);
+    var currentVal = select.value;
+    if (currentVal) {
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == currentVal) {
+                input.value = select.options[i].text;
+                break;
+            }
+        }
+    }
+    function renderOptions(filter) {
+        dropdown.innerHTML = '';
+        var f = (filter || '').toLowerCase();
+        for (var i = 0; i < select.options.length; i++) {
+            var opt = select.options[i];
+            if (!opt.value) continue;
+            if (f && opt.text.toLowerCase().indexOf(f) === -1) continue;
+            var item = document.createElement('a');
+            item.className = 'dropdown-item';
+            item.href = '#';
+            item.textContent = opt.text;
+            item.setAttribute('data-value', opt.value);
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                select.value = this.getAttribute('data-value');
+                input.value = this.textContent;
+                dropdown.classList.remove('show');
+            });
+            dropdown.appendChild(item);
+        }
+        if (dropdown.children.length === 0) {
+            var empty = document.createElement('span');
+            empty.className = 'dropdown-item text-muted';
+            empty.textContent = '无匹配项';
+            dropdown.appendChild(empty);
+        }
+        dropdown.classList.add('show');
+    }
+    input.addEventListener('focus', function() { renderOptions(this.value); });
+    input.addEventListener('input', function() { renderOptions(this.value); });
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) dropdown.classList.remove('show');
+    });
+}
+initSearchableSelect('filterProject');
+initSearchableSelect('filterSubcontractor');
+</script>
+{% endblock %}

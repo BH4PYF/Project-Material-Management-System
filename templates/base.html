@@ -19,7 +19,7 @@
         <!-- 侧边栏 -->
         <div class="sidebar bg-dark text-white" id="sidebar">
             <div class="sidebar-header p-3 border-bottom border-secondary">
-                <h5 class="mb-0"><i class="bi bi-building"></i> 材料管理系统</h5>
+                <h5 class="mb-0"><i class="bi bi-building"></i> 项目管理系统</h5>
             </div>
             <nav class="nav flex-column p-2">
                 {% if request.user.profile.is_supplier %}
@@ -28,49 +28,90 @@
                     <i class="bi bi-truck"></i> 发货管理
                 </a>
                 {% else %}
-                <!-- 非供应商菜单（管理员、物资部、材料员） -->
+                <!-- 非供应商菜单（管理员、物资部、材料员、分包商） -->
+                {% if not request.user.profile.is_subcontractor %}
                 <a class="nav-link sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
-                    <i class="bi bi-speedometer2"></i> 材料管理系统
+                    <i class="bi bi-speedometer2"></i> 项目管理系统
                 </a>
                 {% if request.user.profile.is_admin or request.user.profile.is_management %}
                 <div class="nav-item">
                     <a class="nav-link sidebar-link" data-bs-toggle="collapse" href="#archiveMenu" role="button" aria-expanded="false">
                         <i class="bi bi-archive"></i> 档案管理 <i class="bi bi-chevron-down float-end small"></i>
                     </a>
-                    <div class="collapse {% if 'project' in request.resolver_match.url_name or 'material' in request.resolver_match.url_name or 'supplier' in request.resolver_match.url_name %}show{% endif %}" id="archiveMenu">
+                    <div class="collapse {% if 'project' in request.resolver_match.url_name or 'supplier' in request.resolver_match.url_name or 'subcontractor' in request.resolver_match.url_name or 'subcontract_list' in request.resolver_match.url_name or request.resolver_match.url_name == 'material_list' or request.resolver_match.url_name == 'material_create' or request.resolver_match.url_name == 'material_edit' or request.resolver_match.url_name == 'material_delete' or request.resolver_match.url_name == 'material_detail' %}show{% endif %}" id="archiveMenu">
                         <a class="nav-link sidebar-link ps-4 {% if 'project' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'project_list' %}">
                             <i class="bi bi-folder"></i> 项目档案
                         </a>
-                        <a class="nav-link sidebar-link ps-4 {% if 'material' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'material_list' %}">
+                        <a class="nav-link sidebar-link ps-4 {% if request.resolver_match.url_name == 'material_list' or request.resolver_match.url_name == 'material_create' or request.resolver_match.url_name == 'material_edit' or request.resolver_match.url_name == 'material_delete' or request.resolver_match.url_name == 'material_detail' %}active{% endif %}" href="{% url 'material_list' %}">
                             <i class="bi bi-box-seam"></i> 材料档案
                         </a>
                         <a class="nav-link sidebar-link ps-4 {% if 'supplier' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'supplier_list' %}">
                             <i class="bi bi-truck"></i> 供应商档案
                         </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'subcontractor' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'subcontractor_list' %}">
+                            <i class="bi bi-person-badge"></i> 分包商档案
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'subcontract_list' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'subcontract_list_list' %}">
+                            <i class="bi bi-list-check"></i> 分包清单
+                        </a>
                     </div>
                 </div>
                 {% endif %}
                 <hr class="border-secondary my-1">
-                <a class="nav-link sidebar-link {% if 'inbound' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'inbound_list' %}">
-                    <i class="bi bi-box-arrow-in-down"></i> 入库管理
-                </a>
-                <a class="nav-link sidebar-link {% if 'purchase_plan' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'purchase_plan_list' %}">
-                    <i class="bi bi-cart-plus"></i> 采购计划
-                </a>
-                {% if request.user.profile.is_admin or request.user.profile.is_supplier %}
-                <a class="nav-link sidebar-link {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'delivery_list' %}">
-                    <i class="bi bi-truck"></i> 发货管理
-                </a>
-                {% endif %}
-                <a class="nav-link sidebar-link {% if 'quick_receive' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'quick_receive' %}">
-                    <i class="bi bi-qr-code-scan"></i> 快速收货
-                </a>
+                <div class="nav-item">
+                    <a class="nav-link sidebar-link" data-bs-toggle="collapse" href="#materialMenu" role="button" aria-expanded="false">
+                        <i class="bi bi-box"></i> 材料管理 <i class="bi bi-chevron-down float-end small"></i>
+                    </a>
+                    <div class="collapse {% if 'material_plan' in request.resolver_match.url_name or 'inbound' in request.resolver_match.url_name or 'purchase_plan' in request.resolver_match.url_name or 'delivery' in request.resolver_match.url_name or 'quick_receive' in request.resolver_match.url_name %}show{% endif %}" id="materialMenu">
+                        <a class="nav-link sidebar-link ps-4 {% if 'material_plan' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'material_plan_list' %}">
+                            <i class="bi bi-clipboard-check"></i> 材料计划
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'inbound' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'inbound_list' %}">
+                            <i class="bi bi-box-arrow-in-down"></i> 入库管理
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'purchase_plan' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'purchase_plan_list' %}">
+                            <i class="bi bi-cart-plus"></i> 采购计划
+                        </a>
+                        {% if request.user.profile.is_admin or request.user.profile.is_supplier %}
+                        <a class="nav-link sidebar-link ps-4 {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'delivery_list' %}">
+                            <i class="bi bi-truck"></i> 发货管理
+                        </a>
+                        {% endif %}
+                        <a class="nav-link sidebar-link ps-4 {% if 'quick_receive' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'quick_receive' %}">
+                            <i class="bi bi-qr-code-scan"></i> 快速收货
+                        </a>
+                    </div>
+                </div>
+                <hr class="border-secondary my-1">
+                <div class="nav-item">
+                    <a class="nav-link sidebar-link" data-bs-toggle="collapse" href="#subcontractMenu" role="button" aria-expanded="false">
+                        <i class="bi bi-file-earmark-text"></i> 分包管理 <i class="bi bi-chevron-down float-end small"></i>
+                    </a>
+                    <div class="collapse {% if 'budget' in request.resolver_match.url_name or 'contract' in request.resolver_match.url_name or 'measurement' in request.resolver_match.url_name or 'settlement' in request.resolver_match.url_name %}show{% endif %}" id="subcontractMenu">
+                        {% if request.user.profile.is_admin or request.user.profile.is_management %}
+                        <a class="nav-link sidebar-link ps-4 {% if 'budget' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'budget_list' %}">
+                            <i class="bi bi-cash-stack"></i> 分包预算管理
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if request.resolver_match.url_name == 'contract_list' or request.resolver_match.url_name == 'contract_create' or request.resolver_match.url_name == 'contract_edit' or request.resolver_match.url_name == 'contract_delete' or request.resolver_match.url_name == 'contract_detail' %}active{% endif %}" href="{% url 'contract_list' %}">
+                            <i class="bi bi-file-text"></i> 分包合同管理
+                        </a>
+                        {% endif %}
+                        <a class="nav-link sidebar-link ps-4 {% if 'measurement' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'measurement_list' %}">
+                            <i class="bi bi-rulers"></i> 进度计量管理
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'settlement' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'settlement_list' %}">
+                            <i class="bi bi-calculator"></i> 分包结算管理
+                        </a>
+                    </div>
+                </div>
+
                 <a class="nav-link sidebar-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'report_page' %}">
                     <i class="bi bi-file-earmark-bar-graph"></i> 统计报表
                 </a>
                 <a class="nav-link sidebar-link {% if 'chart' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'chart_page' %}">
                     <i class="bi bi-graph-up"></i> 图表分析
                 </a>
+
                 {% if request.user.profile.is_admin %}
                 <hr class="border-secondary my-1">
                 <a class="nav-link sidebar-link {% if 'log' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'log_list' %}">
@@ -82,6 +123,22 @@
                 <a class="nav-link sidebar-link {% if 'setting' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'settings_page' %}">
                     <i class="bi bi-gear"></i> 系统设置
                 </a>
+                {% endif %}
+                {% else %}
+                <!-- 分包商菜单 -->
+                <div class="nav-item">
+                    <a class="nav-link sidebar-link {% if 'measurement' in request.resolver_match.url_name or 'settlement' in request.resolver_match.url_name %}{% endif %}" data-bs-toggle="collapse" href="#subcontractMenu" role="button" aria-expanded="false">
+                        <i class="bi bi-file-earmark-text"></i> 分包管理 <i class="bi bi-chevron-down float-end small"></i>
+                    </a>
+                    <div class="collapse show" id="subcontractMenu">
+                        <a class="nav-link sidebar-link ps-4 {% if 'measurement' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'measurement_list' %}">
+                            <i class="bi bi-rulers"></i> 进度计量管理
+                        </a>
+                        <a class="nav-link sidebar-link ps-4 {% if 'settlement' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'settlement_list' %}">
+                            <i class="bi bi-calculator"></i> 分包结算管理
+                        </a>
+                    </div>
+                </div>
                 {% endif %}
                 {% endif %}
             </nav>

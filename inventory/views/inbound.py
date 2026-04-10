@@ -20,47 +20,21 @@ def inbound_list(request):
     date_from = parse_date(request.GET.get('date_from', ''))
     date_to = parse_date(request.GET.get('date_to', ''))
     
-    # 下拉选择器筛选（保留原有功能）
     project_id = request.GET.get('project', '')
     material_id = request.GET.get('material', '')
     supplier_id = request.GET.get('supplier', '')
-    
-    # 模糊查询输入框（新增功能）
-    project_search = request.GET.get('project_search', '')
-    material_search = request.GET.get('material_search', '')
-    supplier_search = request.GET.get('supplier_search', '')
     
     if date_from:
         records = records.filter(date__gte=date_from)
     if date_to:
         records = records.filter(date__lte=date_to)
     
-    # 下拉选择器筛选
     if project_id:
         records = records.filter(project_id=project_id)
     if material_id:
         records = records.filter(material_id=material_id)
     if supplier_id:
         records = records.filter(supplier_id=supplier_id)
-    
-    # 模糊查询筛选
-    if project_search:
-        records = records.filter(
-            Q(project__code__icontains=project_search) | 
-            Q(project__name__icontains=project_search)
-        )
-    if material_search:
-        records = records.filter(
-            Q(material__code__icontains=material_search) | 
-            Q(material__name__icontains=material_search) |
-            Q(material__spec__icontains=material_search)
-        )
-    if supplier_search:
-        records = records.filter(
-            Q(supplier__code__icontains=supplier_search) | 
-            Q(supplier__name__icontains=supplier_search) |
-            Q(supplier__contact__icontains=supplier_search)
-        )
 
     paginator = Paginator(records, 20)
     page_number = request.GET.get('page')
@@ -74,9 +48,7 @@ def inbound_list(request):
     return render(request, 'inventory/inbound_list.html', {
         'records': page_obj, 'projects': projects, 'materials': materials,
         'suppliers': suppliers, 'date_from': date_from, 'date_to': date_to,
-        'project_id': project_id, 'material_id': material_id, 'supplier_id': supplier_id,
-        'project_search': project_search, 'material_search': material_search,
-        'supplier_search': supplier_search,
+        'selected_project': project_id, 'selected_material': material_id, 'selected_supplier': supplier_id,
         'page_obj': page_obj,
     })
 

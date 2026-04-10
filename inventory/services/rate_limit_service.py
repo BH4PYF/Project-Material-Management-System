@@ -88,3 +88,17 @@ def clear_login_attempts(username, ip_address):
     cache.delete(_user_key(username, ip_address))
     cache.delete(_ip_key(ip_address))
 
+
+def check_rate_limit(request, action, limit=10, window=60):
+    """检查用户操作速率限制"""
+    ip_address = get_client_ip(request)
+    user_id = request.user.id if request.user.is_authenticated else 'anonymous'
+    key = f'rate_limit:{action}:{user_id}:{ip_address}'
+    
+    current = cache.get(key, 0)
+    if current >= limit:
+        return False
+    
+    cache.set(key, current + 1, window)
+    return True
+

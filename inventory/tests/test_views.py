@@ -466,3 +466,149 @@ class SettingsViewsTest(TestCase):
         self.assertEqual(Project.objects.count(), 0)
         # 验证用户仍然存在
         self.assertTrue(User.objects.filter(username='admin').exists())
+
+
+class MeasurementViewsTest(TestCase):
+    """进度计量视图测试"""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        from ..models import Subcontractor, Contract, Project
+
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+
+        cls.project = Project.objects.create(
+            code='PRJ001', name='测试项目', manager='张三',
+            budget=Decimal('100000'), status='active'
+        )
+        cls.subcontractor = Subcontractor.objects.create(
+            code='SC001', name='测试分包商', contact='李四',
+            phone='13800138000', main_type='土建工程', credit_rating='good'
+        )
+        cls.contract = Contract.objects.create(
+            code='CON001', name='测试合同', project=cls.project,
+            subcontractor=cls.subcontractor
+        )
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_measurement_list_view(self):
+        """测试进度计量列表页面"""
+        response = self.client.get(reverse('measurement_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_measurement_create_view(self):
+        """测试进度计量创建页面"""
+        response = self.client.get(reverse('measurement_create'))
+        self.assertEqual(response.status_code, 200)
+
+
+class SettlementViewsTest(TestCase):
+    """分包结算视图测试"""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        from ..models import Subcontractor, Contract, Project
+
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+
+        cls.project = Project.objects.create(
+            code='PRJ001', name='测试项目', manager='张三',
+            budget=Decimal('100000'), status='active'
+        )
+        cls.subcontractor = Subcontractor.objects.create(
+            code='SC001', name='测试分包商', contact='李四',
+            phone='13800138000', main_type='土建工程', credit_rating='good'
+        )
+        cls.contract = Contract.objects.create(
+            code='CON001', name='测试合同', project=cls.project,
+            subcontractor=cls.subcontractor
+        )
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_settlement_list_view(self):
+        """测试分包结算列表页面"""
+        response = self.client.get(reverse('settlement_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_settlement_create_view(self):
+        """测试分包结算创建页面"""
+        response = self.client.get(reverse('settlement_create'))
+        self.assertEqual(response.status_code, 200)
+
+
+class SubcontractorViewsTest(TestCase):
+    """分包商视图测试"""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        from ..models import Subcontractor
+
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+
+        cls.subcontractor = Subcontractor.objects.create(
+            code='SC001', name='测试分包商', contact='王五',
+            phone='13900139000', main_type='装饰工程', credit_rating='good'
+        )
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_subcontractor_list_view(self):
+        """测试分包商列表页面"""
+        response = self.client.get(reverse('subcontractor_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '测试分包商')
+        self.assertContains(response, 'SC001')
+
+
+class ContractViewsTest(TestCase):
+    """合同视图测试"""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        from ..models import Subcontractor, Project, Contract
+
+        cls.user = User.objects.create_user(username='admin', password='testpass123', is_staff=True)
+        cls.profile = Profile.objects.create(user=cls.user, role='admin')
+
+        cls.project = Project.objects.create(
+            code='PRJ001', name='测试项目', manager='张三'
+        )
+        cls.subcontractor = Subcontractor.objects.create(
+            code='SC001', name='测试分包商', contact='李四',
+            phone='13800138000', main_type='土建'
+        )
+        cls.contract = Contract.objects.create(
+            code='CON001', name='测试合同', project=cls.project,
+            subcontractor=cls.subcontractor
+        )
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='admin', password='testpass123')
+
+    def test_contract_list_view(self):
+        """测试合同列表页面"""
+        response = self.client.get(reverse('contract_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '测试合同')
+        self.assertContains(response, 'CON001')
+

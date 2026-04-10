@@ -20,6 +20,18 @@ function onShippingChange(sel) {
         trackingDiv.style.display = 'block';
     }
 }
+
+// 发货单编辑成功回调函数
+function deliveryEditSuccess(data) {
+    if (data.success) {
+        // 显示成功消息
+        showMsg(data.message || '发货单编辑成功', 'success');
+        // 延迟跳转到发货单列表页面
+        setTimeout(function() {
+            window.location.href = "{% url 'delivery_list' %}";
+        }, 1500);
+    }
+}
 </script>
 {% endblock %}
 {% block content %}
@@ -29,7 +41,7 @@ function onShippingChange(sel) {
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <form method="post" action="{% url 'delivery_edit' delivery.pk %}" data-ajax>
+        <form method="post" action="{% url 'delivery_edit' delivery.pk %}" data-ajax data-success-callback="deliveryEditSuccess">
             {% csrf_token %}
             <input type="hidden" name="purchase_plan_id" value="{{ delivery.purchase_plan.id }}">
             

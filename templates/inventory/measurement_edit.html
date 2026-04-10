@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}编辑进度计量{% endblock %}
+{% block page_title %}编辑进度计量{% endblock %}
+{% block content %}
+<style>
+    /* 计量清单表格样式 */
+    .measurement-item-table th,
+    .measurement-item-table td {
+        vertical-align: middle;
+    }
+    .measurement-item-table input {
+        width: 100%;
+    }
+</style>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" action="{% url 'measurement_edit' measurement.pk %}">
+            {% csrf_token %}
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">合同名称 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <select class="form-select" name="contract" id="contractSelect" required>
+                        <option value="">请选择合同</option>
+                        {% for c in contracts %}
+                        <option value="{{ c.pk }}" {% if measurement.contract.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">计量周期 <span class="text-danger">*</span></label>
+                <div class="col-sm-5">
+                    <input type="date" class="form-control" name="period_start" value="{{ measurement.period_start|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-sm-5">
+                    <input type="date" class="form-control" name="period_end" value="{{ measurement.period_end|date:'Y-m-d' }}" required>
+                </div>
+            </div>
+            
+            <h6 class="mb-3">计量清单</h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-hover measurement-item-table" id="measurementItemTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">序号</th>
+                            <th>清单名称</th>
+                            <th style="width: 100px;">分类</th>
+                            <th style="width: 100px;">施工参数</th>
+                            <th style="width: 80px;">单位</th>
+                            <th style="width: 100px;">合同工程量</th>
+                            <th style="width: 100px;">之前工程量</th>
+                            <th style="width: 100px;">本期工程量 <span class="text-danger">*</span></th>
+                            <th style="width: 100px;">累计工程量</th>
+                            <th style="width: 100px;">单价</th>
+                            <th style="width: 100px;">本期产值</th>
+                            <th style="width: 100px;">累计产值</th>
+                        </tr>
+                    </thead>
+                    <tbody id="measurementItemTbody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-sm-10 offset-sm-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> 保存</button>
+                    <a href="{% url 'measurement_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let contractItems = [];
+        let measurementItemsMap = {};
+        
+        // 构建计量清单项的映射
+        {% for item in measurement.measurement_items.all %}
+        measurementItemsMap[{{ item.subcontract_list.id }}] = {
+            previous_quantity: {{ item.previous_quantity }},
+            current_quantity: {{ item.current_quantity }}
+        };
+        {% endfor %}
+        
+        // 处理合同选择，加载对应的分包清单
+        document.getElementById('contractSelect').addEventListener('change', function() {
+            const contractId = this.value;
+            if (contractId) {
+                fetch(`/api/subcontract-lists-by-contract/?contract_id=${contractId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        contractItems = data.items || [];
+                        renderMeasurementItems();
+                    })
+                    .catch(error => {
+                        console.error('加载分包清单失败:', error);
+                    });
+            } else {
+                contractItems = [];
+                renderMeasurementItems();
+            }
+        });
+        
+        // 初始化时加载当前合同的清单
+        const initialContractId = document.getElementById('contractSelect').value;
+        if (initialContractId) {
+            fetch(`/api/subcontract-lists-by-contract/?contract_id=${initialContractId}`)
+                .then(response => response.json())
+                .then(data => {
+                    contractItems = data.items || [];
+                    renderMeasurementItems();
+                })
+                .catch(error => {
+                    console.error('加载分包清单失败:', error);
+                });
+        }
+        
+        // 渲染计量清单
+        function renderMeasurementItems() {
+            const tbody = document.getElementById('measurementItemTbody');
+            tbody.innerHTML = '';
+            
+            contractItems.forEach((item, index) => {
+                const existingItem = measurementItemsMap[item.id] || { previous_quantity: 0, current_quantity: 0 };
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="number" class="form-control form-control-sm" name="item_order" value="${index + 1}" readonly></td>
+                    <td>
+                        <input type="hidden" name="subcontract_list" value="${item.id}">
+                        <span>${item.name}</span>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.category}" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.construction_params}" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.unit}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="contract_quantity" value="${item.quantity}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm previous-quantity-input" name="previous_quantity" value="${existingItem.previous_quantity}"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm current-quantity-input" name="current_quantity" value="${existingItem.current_quantity}" required></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm cumulative-quantity-input" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="unit_price" value="${item.unit_price}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm current-value-input" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm cumulative-value-input" readonly></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // 为新添加的行添加事件监听
+            addEventListenersToRows();
+            
+            // 计算所有行的值
+            document.querySelectorAll('#measurementItemTbody tr').forEach(row => {
+                calculateValues(row);
+            });
+        }
+        
+        // 为所有行添加事件监听
+        function addEventListenersToRows() {
+            document.querySelectorAll('.previous-quantity-input, .current-quantity-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const row = this.closest('tr');
+                    calculateValues(row);
+                });
+            });
+        }
+        
+        // 计算累计工程量和本期产值
+        function calculateValues(row) {
+            const previousQuantity = parseFloat(row.querySelector('.previous-quantity-input').value) || 0;
+            const currentQuantity = parseFloat(row.querySelector('.current-quantity-input').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('input[name="unit_price"]').value) || 0;
+            
+            const cumulativeQuantity = previousQuantity + currentQuantity;
+            const currentValue = currentQuantity * unitPrice;
+            const cumulativeValue = cumulativeQuantity * unitPrice;
+            
+            row.querySelector('.cumulative-quantity-input').value = cumulativeQuantity.toFixed(2);
+            row.querySelector('.current-value-input').value = currentValue.toFixed(2);
+            row.querySelector('.cumulative-value-input').value = cumulativeValue.toFixed(2);
+        }
+    });
+</script>
+{% endblock %}

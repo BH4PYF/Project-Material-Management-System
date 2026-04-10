@@ -2,15 +2,32 @@ from datetime import date
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Sum, Count
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
-from ..models import Project, Material, Supplier, InboundRecord
+from ..models import Project, Material, Supplier, InboundRecord, Contract, Measurement, Settlement
 
 
 @login_required
 def dashboard(request):
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'subcontractor':
+        return redirect('measurement_list')
+    
     today = date.today()
-    cache_key = f'dashboard_stats_{today}'
+    project_id = request.GET.get('project')
+    selected_project = None
+    selected_project_id = project_id
+    
+    # 只返回前 50 条记录用于模板展示（避免大数据量）
+    projects = Project.objects.filter(status__in=['active', 'pending']).order_by('-status', 'code')[:50]
+    
+    if project_id:
+        try:
+            selected_project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            selected_project = None
+    
+    # 构建缓存键
+    cache_key = f'dashboard_stats_{today}_{project_id or "all"}'
     stats = cache.get(cache_key)
 
     if stats is None:
@@ -19,6 +36,79 @@ def dashboard(request):
         active_projects_count = Project.objects.filter(status='active').count()
         materials_count = Material.objects.count()
         suppliers_count = Supplier.objects.count()
+        
+        # 分包管理统计
+        contracts_count = Contract.objects.count()
+        measurements_count = Measurement.objects.count()
+        settlements_count = Settlement.objects.count()
+        
+        # 材料总额计算
+        materials_total = 0
+        for material in Material.objects.all():
+            total_inbound = material.get_total_inbound()
+            if total_inbound > 0:
+                materials_total += total_inbound * material.standard_price
+        
+        # 结算总额计算
+        from django.db.models import Sum
+        settlements_total = Settlement.objects.aggregate(total=Sum('final_amount'))['total'] or 0
+        
+        # 项目进度计算
+        project_progress = 0
+        if selected_project:
+            from django.db.models import Sum
+            budget_total = selected_project.budgets.aggregate(total=Sum('budget_items__total_amount'))['total'] or 0
+            measurement_total = 0
+            contracts = selected_project.contracts.all()
+            for contract in contracts:
+                contract_measurement = contract.measurements.aggregate(
+                    total=Sum('current_value')
+                )['total'] or 0
+                measurement_total += contract_measurement
+            if budget_total > 0:
+                project_progress = min(100, round((measurement_total / budget_total) * 100, 1))
+        else:
+            total_budget = 0
+            total_measurement = 0
+            for project in Project.objects.filter(status__in=['active', 'pending']):
+                project_budget = project.budgets.aggregate(total=Sum('budget_items__total_amount'))['total'] or 0
+                project_measurement = 0
+                contracts = project.contracts.all()
+                for contract in contracts:
+                    contract_measurement = contract.measurements.aggregate(
+                        total=Sum('current_value')
+                    )['total'] or 0
+                    project_measurement += contract_measurement
+                total_budget += project_budget
+                total_measurement += project_measurement
+            if total_budget > 0:
+                project_progress = min(100, round((total_measurement / total_budget) * 100, 1))
+        
+        # 材料节超计算
+        material_variance = 0
+        material_variance_percentage = 0
+        if selected_project:
+            # 计算入库总额与材料计划的差值
+            # 获取项目的所有入库总额
+            inbound_total = selected_project.inbound_records.aggregate(total=Sum('total_amount'))['total'] or 0
+            # 获取项目的所有材料计划总额
+            from .material_plan import MaterialPlan
+            material_plan_total = selected_project.material_plans.aggregate(total=Sum('total_amount'))['total'] or 0
+            material_variance = inbound_total - material_plan_total
+            if material_plan_total > 0:
+                material_variance_percentage = (material_variance / material_plan_total) * 100
+        else:
+            # 计算所有项目的材料节超
+            total_inbound = 0
+            total_material_plan = 0
+            for project in Project.objects.filter(status__in=['active', 'pending']):
+                project_inbound = project.inbound_records.aggregate(total=Sum('total_amount'))['total'] or 0
+                project_material_plan = project.material_plans.aggregate(total=Sum('total_amount'))['total'] or 0
+                total_inbound += project_inbound
+                total_material_plan += project_material_plan
+            material_variance = total_inbound - total_material_plan
+            if total_material_plan > 0:
+                material_variance_percentage = (material_variance / total_material_plan) * 100
 
         # 获取今日入库统计（合并为一次查询）
         today_stats = InboundRecord.objects.filter(date=today).aggregate(
@@ -31,6 +121,14 @@ def dashboard(request):
             'active_projects_count': active_projects_count,
             'materials_count': materials_count,
             'suppliers_count': suppliers_count,
+            'contracts_count': contracts_count,
+            'measurements_count': measurements_count,
+            'settlements_count': settlements_count,
+            'materials_total': materials_total,
+            'settlements_total': settlements_total,
+            'project_progress': project_progress,
+            'material_variance': material_variance,
+            'material_variance_percentage': material_variance_percentage,
             'today_inbound_count': today_stats['count'],
             'today_inbound_amount': today_stats['total'] or 0,
         }
@@ -42,8 +140,6 @@ def dashboard(request):
         date=today
     ).order_by('-operate_time')[:20]
 
-    # 只返回前 50 条记录用于模板展示（避免大数据量）
-    projects = Project.objects.filter(status__in=['active', 'pending']).order_by('-status', 'code')[:50]
     materials = Material.objects.select_related('category').all().order_by('code')[:100]
     suppliers = Supplier.objects.all().order_by('code')[:50]
 
@@ -54,4 +150,6 @@ def dashboard(request):
         'suppliers': suppliers,
         'today': today,
         'stats': stats,
+        'selected_project': selected_project,
+        'selected_project_id': selected_project_id,
     })

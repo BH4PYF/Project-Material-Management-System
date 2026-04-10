@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <h5><i class="bi bi-clipboard-check"></i> 材料计划详情</h5>
+        <a href="{% url 'material_plan_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> 返回列表
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <!-- 基本信息 -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">项目</label>
+                        <input type="text" class="form-control" value="{{ plan.project.name }}" readonly>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">计划编号</label>
+                        <input type="text" class="form-control" value="{{ plan.plan_number }}" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">计划日期</label>
+                        <input type="text" class="form-control" value="{{ plan.plan_date }}" readonly>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">计划总金额</label>
+                        <input type="text" class="form-control" value="¥{{ plan.total_amount|floatformat:2 }}" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label class="form-label">计划描述</label>
+                        <input type="text" class="form-control" value="{{ plan.description }}" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">创建人</label>
+                        <input type="text" class="form-control" value="{{ plan.created_by.username }}" readonly>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">创建时间</label>
+                        <input type="text" class="form-control" value="{{ plan.created_at|date:'Y-m-d H:i' }}" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 材料明细 -->
+            <div class="mb-4">
+                <label class="form-label">材料明细</label>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>材料名称</th>
+                                <th>计划数量</th>
+                                <th>单位</th>
+                                <th>单价</th>
+                                <th>金额</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in plan.items.all %}
+                            <tr>
+                                <td>{{ item.material.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.unit }}</td>
+                                <td>¥{{ item.unit_price|floatformat:2 }}</td>
+                                <td>¥{{ item.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">合计</th>
+                                <th>¥{{ plan.total_amount|floatformat:2 }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <a href="{% url 'material_plan_edit' plan.id %}" class="btn btn-outline-primary">编辑</a>
+                <a href="{% url 'material_plan_delete' plan.id %}" class="btn btn-outline-danger ms-2">删除</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

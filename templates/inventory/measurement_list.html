@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}进度计量{% endblock %}
+{% block page_title %}进度计量{% endblock %}
+{% block content %}
+<style>
+    /* 进度计量列表列宽优化 */
+    .table-measurement-list th:nth-child(1),  /* 计量编号 */
+    .table-measurement-list td:nth-child(1) {
+        width: 90px;
+        min-width: 70px;
+    }
+    .table-measurement-list th:nth-child(2),  /* 合同名称 */
+    .table-measurement-list td:nth-child(2) {
+        width: 200px;
+        min-width: 150px;
+        max-width: 250px;
+    }
+    .table-measurement-list th:nth-child(3),  /* 项目名称 */
+    .table-measurement-list td:nth-child(3) {
+        width: 180px;
+        min-width: 140px;
+        max-width: 220px;
+    }
+    .table-measurement-list th:nth-child(4),  /* 分包商 */
+    .table-measurement-list td:nth-child(4) {
+        width: 180px;
+        min-width: 140px;
+        max-width: 220px;
+    }
+    .table-measurement-list th:nth-child(5),  /* 计量周期 */
+    .table-measurement-list td:nth-child(5) {
+        width: 150px;
+        min-width: 120px;
+    }
+    .table-measurement-list th:nth-child(6),  /* 之前产值 */
+    .table-measurement-list td:nth-child(6) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-measurement-list th:nth-child(7),  /* 本期产值 */
+    .table-measurement-list td:nth-child(7) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-measurement-list th:nth-child(8),  /* 累计产值 */
+    .table-measurement-list td:nth-child(8) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-measurement-list th:nth-child(9),  /* 操作 */
+    .table-measurement-list td:nth-child(9) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-measurement-list td:nth-child(9) .btn {
+        margin-right: 4px;
+    }
+    .table-measurement-list td:nth-child(9) .btn:last-child {
+        margin-right: 0;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-bar-chart"></i> 进度计量</h5>
+    <div>
+        <a href="{% url 'export_measurements' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end" id="filterForm">
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="project" id="filterProject">
+                <option value="">全部项目</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if selected_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" name="subcontractor" id="filterSubcontractor">
+                <option value="">全部分包商</option>
+                {% for s in subcontractors %}
+                <option value="{{ s.id }}" {% if selected_subcontractor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 筛选</button></div>
+        <div class="col-auto"><a href="{% url 'measurement_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> 重置</a></div>
+        <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-success" onclick="location.href='{% url 'measurement_create' %}'"><i class="bi bi-plus-lg"></i> 创建计量</button></div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-measurement-list">
+            <thead><tr><th>计量编号</th><th>合同名称</th><th>项目名称</th><th>分包商</th><th>计量周期</th><th>之前产值</th><th>本期产值</th><th>累计产值</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for m in measurements %}
+            <tr>
+                <td>{{ m.code }}</td><td>{{ m.contract.name }}</td><td>{{ m.project.name }}</td><td>{{ m.subcontractor.name }}</td>
+                <td>{{ m.period_start|date:"Y-m-d" }} 至 {{ m.period_end|date:"Y-m-d" }}</td>
+                <td class="text-right">{{ m.previous_value|floatformat:2 }}</td>
+                <td class="text-right">{{ m.current_value|floatformat:2 }}</td>
+                <td class="text-right">{{ m.cumulative_value|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'measurement_detail' m.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                    <a href="{% url 'measurement_edit' m.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMeasurement({{ m.pk }}, '{{ m.code }}')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center py-5">
+                    <i class="bi bi-bar-chart fs-1 text-muted d-block mb-3"></i>
+                    <h6 class="text-muted">暂无进度计量数据</h6>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                确定要删除进度计量 <strong id="deleteMeasurementCode"></strong> 吗？此操作不可恢复。
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteMeasurement(pk, code) {
+    document.getElementById('deleteForm').action = '/measurements/' + pk + '/delete/';
+    document.getElementById('deleteMeasurementCode').textContent = code;
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+function initSearchableSelect(selectId) {
+    var select = document.getElementById(selectId);
+    if (!select) return;
+    var wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'inline-block';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = select.options[0].text;
+    input.style.width = '180px';
+    wrapper.appendChild(input);
+    var dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-menu';
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;z-index:1000;max-height:200px;overflow-y:auto;width:100%;';
+    wrapper.appendChild(dropdown);
+    var currentVal = select.value;
+    if (currentVal) {
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == currentVal) {
+                input.value = select.options[i].text;
+                break;
+            }
+        }
+    }
+    function renderOptions(filter) {
+        dropdown.innerHTML = '';
+        var f = (filter || '').toLowerCase();
+        for (var i = 0; i < select.options.length; i++) {
+            var opt = select.options[i];
+            if (!opt.value) continue;
+            if (f && opt.text.toLowerCase().indexOf(f) === -1) continue;
+            var item = document.createElement('a');
+            item.className = 'dropdown-item';
+            item.href = '#';
+            item.textContent = opt.text;
+            item.setAttribute('data-value', opt.value);
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                select.value = this.getAttribute('data-value');
+                input.value = this.textContent;
+                dropdown.classList.remove('show');
+            });
+            dropdown.appendChild(item);
+        }
+        if (dropdown.children.length === 0) {
+            var empty = document.createElement('span');
+            empty.className = 'dropdown-item text-muted';
+            empty.textContent = '无匹配项';
+            dropdown.appendChild(empty);
+        }
+        dropdown.classList.add('show');
+    }
+    input.addEventListener('focus', function() { renderOptions(this.value); });
+    input.addEventListener('input', function() { renderOptions(this.value); });
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) dropdown.classList.remove('show');
+    });
+}
+initSearchableSelect('filterProject');
+initSearchableSelect('filterSubcontractor');
+</script>
+{% endblock %}

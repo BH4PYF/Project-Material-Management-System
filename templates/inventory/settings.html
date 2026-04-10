@@ -83,51 +83,119 @@
         </div>
     </div>
     
-    <!-- 材料分类管理 -->
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-plus-circle display-4 text-info"></i>
-                <h6 class="mt-2">添加自定义分类</h6>
-                <p class="text-muted small">添加自定义材料分类</p>
-                <button type="button" class="btn btn-info btn-sm" onclick="showAddCategoryModal()">添加分类</button>
+    <!-- 分类管理卡片 -->
+    <div class="row g-3 mt-4">
+        <!-- 材料分类管理 -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-tags"></i> 材料分类管理</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <i class="bi bi-plus-circle display-4 text-info"></i>
+                                <h6 class="mt-2">添加材料分类</h6>
+                                <p class="text-muted small">添加自定义材料分类</p>
+                                <button type="button" class="btn btn-info btn-sm" onclick="showAddCategoryModal('material')">添加分类</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <i class="bi bi-database-add display-4 text-success"></i>
+                                <h6 class="mt-2">一键初始化材料分类</h6>
+                                <p class="text-muted small">快速创建主要材料分类</p>
+                                <button type="button" class="btn btn-success btn-sm" onclick="initCategories()">
+                                    <i class="bi bi-plus-lg"></i> 初始化分类
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-database-add display-4 text-success"></i>
-                <h6 class="mt-2">一键初始化材料分类</h6>
-                <p class="text-muted small">快速创建主要材料分类：钢筋、水泥、混凝土、砂石、钢绞线、钢管、水泵</p>
-                <button type="button" class="btn btn-success btn-sm" onclick="initCategories()">
-                    <i class="bi bi-plus-lg"></i> 初始化分类
-                </button>
+        
+        <!-- 清单分类管理 -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-list-check"></i> 清单分类管理</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <i class="bi bi-plus-circle display-4 text-primary"></i>
+                                <h6 class="mt-2">添加清单分类</h6>
+                                <p class="text-muted small">添加自定义清单分类</p>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="showAddCategoryModal('subcontract')">添加清单分类</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <i class="bi bi-database-add display-4 text-success"></i>
+                                <h6 class="mt-2">一键初始化清单分类</h6>
+                                <p class="text-muted small">快速创建主要清单分类</p>
+                                <button type="button" class="btn btn-success btn-sm" onclick="initSubcontractCategories()">
+                                    <i class="bi bi-plus-lg"></i> 初始化清单分类
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- 材料分类列表表格 -->
-    <div class="col-md-12 mt-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bi bi-tags"></i> 材料分类管理</h6>
+    <!-- 分类表格并列排放 -->
+    <div class="row mt-4">
+        <!-- 材料分类列表表格 -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-tags"></i> 材料分类管理</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="30%">分类编码</th>
+                                    <th width="50%">分类名称</th>
+                                    <th width="20%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-list">
+                                <!-- 分类列表将通过 JavaScript 加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th width="15%">分类编码</th>
-                                <th width="25%">分类名称</th>
-                                <th width="50%">备注</th>
-                                <th width="10%">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="category-list">
-                            <!-- 分类列表将通过 JavaScript 加载 -->
-                        </tbody>
-                    </table>
+        </div>
+        
+        <!-- 清单分类列表表格 -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-list-check"></i> 清单分类管理</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="30%">清单编号</th>
+                                    <th width="50%">清单名称</th>
+                                    <th width="20%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subcontract-category-list">
+                                <!-- 清单分类列表将通过 JavaScript 加载 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -314,7 +382,7 @@ function loadCategories() {
             tbody.innerHTML = '';
             
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">暂无分类数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">暂无分类数据</td></tr>';
                 return;
             }
             
@@ -324,7 +392,6 @@ function loadCategories() {
                 row.innerHTML = `
                     <td>${escapeHtml(category.code)}</td>
                     <td>${escapeHtml(category.name)}</td>
-                    <td>${escapeHtml(category.remark) || '-'}</td>
                     <td></td>
                 `;
                 // 使用 DOM API 创建删除按钮，避免 onclick 拼接导致的 XSS 风险
@@ -345,12 +412,22 @@ function loadCategories() {
 }
 
 // 显示添加分类模态框
-function showAddCategoryModal() {
-    document.getElementById('categoryModalLabel').textContent = '添加分类';
+function showAddCategoryModal(categoryType = 'material') {
+    document.getElementById('categoryModalLabel').textContent = categoryType === 'material' ? '添加材料分类' : '添加清单分类';
     document.getElementById('categoryForm').action = '{% url "add_custom_category" %}';
     document.getElementById('categoryForm').reset();
     document.getElementById('categoryId').value = '';
-    document.getElementById('categoryCode').disabled = false;
+    document.getElementById('categoryCode').disabled = true; // 清单分类编号自动生成
+    // 添加隐藏字段，标识分类类型
+    let categoryTypeInput = document.getElementById('categoryTypeInput');
+    if (!categoryTypeInput) {
+        categoryTypeInput = document.createElement('input');
+        categoryTypeInput.type = 'hidden';
+        categoryTypeInput.id = 'categoryTypeInput';
+        categoryTypeInput.name = 'category_type';
+        document.getElementById('categoryForm').appendChild(categoryTypeInput);
+    }
+    categoryTypeInput.value = categoryType;
     new bootstrap.Modal(document.getElementById('categoryModal')).show();
 }
 
@@ -388,6 +465,78 @@ function initCategories() {
     });
 }
 
+// 加载清单分类列表
+function loadSubcontractCategories() {
+    fetch('{% url "subcontract_category_list_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('subcontract-category-list');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">暂无清单分类数据</td></tr>';
+                return;
+            }
+            
+            data.forEach(category => {
+                const row = document.createElement('tr');
+                // 使用 escapeHtml 进行转义，防止 XSS 攻击
+                row.innerHTML = `
+                    <td>${escapeHtml(category.code)}</td>
+                    <td>${escapeHtml(category.name)}</td>
+                    <td></td>
+                `;
+                // 使用 DOM API 创建删除按钮，避免 onclick 拼接导致的 XSS 风险
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-sm btn-outline-danger';
+                deleteBtn.textContent = '删除';
+                deleteBtn.addEventListener('click', function() {
+                    deleteSubcontractCategory(category.id, category.name);
+                });
+                row.lastElementChild.appendChild(deleteBtn);
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => {
+            console.error('加载清单分类数据失败:', error);
+            showMsg('加载清单分类数据失败');
+        });
+}
+
+// 一键初始化清单分类
+function initSubcontractCategories() {
+    if (!confirm('确定要初始化清单分类吗？\n\n将创建以下清单分类：\n1. 基础工程 (BOQ0001)\n2. 房屋建筑 (BOQ0002)\n3. 市政工程 (BOQ0003)\n4. 特种加固 (BOQ0004)\n5. 装饰装修 (BOQ0005)\n\n已存在的分类将被跳过。')) {
+        return;
+    }
+    
+    fetch('{% url "init_subcontract_categories" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMsg(data.message, 'success');
+            // 刷新清单分类列表
+            loadSubcontractCategories();
+        } else {
+            showMsg(data.error || '初始化失败');
+        }
+    })
+    .catch(error => {
+        showMsg('网络错误：' + error.message);
+    });
+}
+
+// 删除清单分类
+function deleteSubcontractCategory(id, name) {
+    var url = `{% url "delete_subcontract_category" pk=0 %}`.replace('0', id);
+    confirmDelete(url, name);
+}
+
 // 删除分类
 function deleteCategory(id, name) {
     var url = `{% url "delete_category" pk=0 %}`.replace('0', id);
@@ -397,6 +546,7 @@ function deleteCategory(id, name) {
 // 页面加载完成后加载分类列表
 document.addEventListener('DOMContentLoaded', function() {
     loadCategories();
+    loadSubcontractCategories();
 
     // ========== Tab 懒加载 ==========
     const tabLoadState = { logs: false };

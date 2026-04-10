@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}进度计量详情{% endblock %}
+{% block page_title %}进度计量详情{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-sm-6">
+                <h5 class="card-title">进度计量详情</h5>
+                <p class="text-muted">计量编号：{{ measurement.code }}</p>
+            </div>
+            <div class="col-sm-6 text-end">
+                <a href="{% url 'export_measurement_detail' measurement.pk %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+                <a href="{% url 'measurement_edit' measurement.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> 编辑</a>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMeasurement({{ measurement.pk }}, '{{ measurement.code }}')"><i class="bi bi-trash"></i> 删除</button>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>合同名称：</strong>{{ measurement.contract.name }}</div>
+                <div class="mb-2"><strong>项目名称：</strong>{{ measurement.project.name }}</div>
+                <div class="mb-2"><strong>分包商：</strong>{{ measurement.subcontractor.name }}</div>
+            </div>
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>计量周期：</strong>{{ measurement.period_start|date:"Y-m-d" }} 至 {{ measurement.period_end|date:"Y-m-d" }}</div>
+                <div class="mb-2"><strong>之前产值：</strong><span class="text-primary">{{ measurement.previous_value|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>本期产值：</strong><span class="text-primary">{{ measurement.current_value|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>累计产值：</strong><span class="text-primary">{{ measurement.cumulative_value|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>创建时间：</strong>{{ measurement.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+        </div>
+        
+        <h6 class="mb-3">计量清单</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>清单名称</th>
+                        <th>分类</th>
+                        <th>施工参数</th>
+                        <th>计量单位</th>
+                        <th>之前数量</th>
+                        <th>本期数量</th>
+                        <th>单价</th>
+                        <th>本期产值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in measurement.measurement_items.all %}
+                    <tr>
+                        <td>{{ item.item_order }}</td>
+                        <td>{{ item.subcontract_list.name }}</td>
+                        <td>{{ item.subcontract_list.category }}</td>
+                        <td>{{ item.subcontract_list.construction_params }}</td>
+                        <td>{{ item.subcontract_list.unit }}</td>
+                        <td>{{ item.previous_quantity|floatformat:2 }}</td>
+                        <td>{{ item.current_quantity|floatformat:2 }}</td>
+                        <td>{{ item.unit_price|floatformat:2 }}</td>
+                        <td>{{ item.current_value|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">暂无计量清单数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-sm-12">
+                <a href="{% url 'measurement_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                确定要删除进度计量 <strong id="deleteMeasurementCode"></strong> 吗？此操作不可恢复。
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteMeasurement(pk, code) {
+    // 设置删除表单的action
+    document.getElementById('deleteForm').action = '/measurements/' + pk + '/delete/';
+    // 显示要删除的计量编号
+    document.getElementById('deleteMeasurementCode').textContent = code;
+    // 显示模态框
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
+{% endblock %}

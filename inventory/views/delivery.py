@@ -358,9 +358,7 @@ def delivery_delete(request, pk):
             logger.exception('删除发货单数据库操作失败')
             return JsonResponse({'error': '删除发货单失败：数据库操作异常，请重试'}, status=500)
             
-    return render(request, 'inventory/delivery_delete.html', {
-        'delivery': delivery,
-    })
+    return redirect('delivery_list')
 
 
 # ========== 快速收货 ==========

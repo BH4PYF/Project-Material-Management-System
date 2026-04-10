@@ -38,8 +38,8 @@
                         {% for role in roles %}
                         <tr>
                             <td class="text-center">
-                                <span class="avatar-circle {% if role.code == 'admin' %}bg-danger{% elif role.code == 'management' %}bg-primary{% elif role.code == 'supplier' %}bg-secondary{% else %}bg-info{% endif %}">
-                                    <i class="bi {% if role.code == 'admin' %}bi-shield-fill{% elif role.code == 'management' %}bi-people{% elif role.code == 'supplier' %}bi-truck{% else %}bi-person-workspace{% endif %} text-white"></i>
+                                <span class="avatar-circle {% if role.code == 'admin' %}bg-danger{% elif role.code == 'management' %}bg-primary{% elif role.code == 'supplier' %}bg-warning{% elif role.code == 'subcontractor' %}bg-success{% else %}bg-info{% endif %}">
+                                    <i class="bi {% if role.code == 'admin' %}bi-shield-fill{% elif role.code == 'management' %}bi-people{% elif role.code == 'supplier' %}bi-truck{% elif role.code == 'subcontractor' %}bi-person-badge{% else %}bi-person-workspace{% endif %} {% if role.code == 'supplier' %}text-dark{% else %}text-white{% endif %}"></i>
                                 </span>
                             </td>
                             <td>
@@ -55,6 +55,8 @@
                                     <span class="text-sm text-muted">管理层，拥有大部分管理权限</span>
                                 {% elif role.code == 'supplier' %}
                                     <span class="text-sm text-muted">供应商，只能管理自己的发货单</span>
+                                {% elif role.code == 'subcontractor' %}
+                                    <span class="text-sm text-muted">分包商，可查看进度计量和分包结算</span>
                                 {% else %}
                                     <span class="text-sm text-muted">普通用户</span>
                                 {% endif %}

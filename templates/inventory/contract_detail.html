@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}分包合同详情{% endblock %}
+{% block page_title %}分包合同详情{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-sm-6">
+                <h5 class="card-title">合同详情</h5>
+                <p class="text-muted">合同编号：{{ contract.code }}</p>
+            </div>
+            <div class="col-sm-6 text-end">
+                <a href="{% url 'export_contract_detail' contract.pk %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+                <a href="{% url 'contract_edit' contract.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> 编辑</a>
+                <a href="{% url 'contract_delete' contract.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> 删除</a>
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>合同名称：</strong>{{ contract.name }}</div>
+                <div class="mb-2"><strong>项目名称：</strong>{{ contract.project.name }}</div>
+                <div class="mb-2"><strong>分包商：</strong>{{ contract.subcontractor.name }}</div>
+            </div>
+            <div class="col-sm-6">
+                <div class="mb-2"><strong>合同总额：</strong><span class="text-primary">{{ contract.get_contract_total|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>实际产值：</strong><span class="text-primary">{{ contract.get_actual_value|floatformat:2 }}</span></div>
+                <div class="mb-2"><strong>创建时间：</strong>{{ contract.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+        </div>
+        
+        <h6 class="mb-3">合同清单</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>清单序号</th>
+                        <th>清单名称</th>
+                        <th>分类</th>
+                        <th>施工参数</th>
+                        <th>计量单位</th>
+                        <th>工程量</th>
+                        <th>单价</th>
+                        <th>合价</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in contract.contract_items.all %}
+                    <tr>
+                        <td>{{ item.item_order }}</td>
+                        <td>{{ item.subcontract_list.name }}</td>
+                        <td>{{ item.subcontract_list.category }}</td>
+                        <td>{{ item.subcontract_list.construction_params }}</td>
+                        <td>{{ item.subcontract_list.unit }}</td>
+                        <td>{{ item.quantity|floatformat:2 }}</td>
+                        <td>{{ item.unit_price|floatformat:2 }}</td>
+                        <td>{{ item.total_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">暂无合同清单数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-sm-12">
+                <a href="{% url 'contract_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回列表</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

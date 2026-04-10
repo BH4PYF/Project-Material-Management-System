@@ -23,6 +23,8 @@ def login_view(request):
     if request.user.is_authenticated:
         if hasattr(request.user, 'profile') and request.user.profile.role == 'supplier':
             return redirect('delivery_list')
+        if hasattr(request.user, 'profile') and request.user.profile.role == 'subcontractor':
+            return redirect('measurement_list')
         return redirect('dashboard')
     
     # 获取导航栏标题（用于登录页面显示）
@@ -63,10 +65,17 @@ def login_view(request):
             log_operation(user, '系统', 'login', f'{user.username} 登录系统')
             # 如果是 AJAX 请求，返回成功响应
             if is_ajax_request(request):
-                redirect_url = 'delivery_list' if user.profile.role == 'supplier' else 'dashboard'
+                if user.profile.role == 'supplier':
+                    redirect_url = 'delivery_list'
+                elif user.profile.role == 'subcontractor':
+                    redirect_url = 'measurement_list'
+                else:
+                    redirect_url = 'dashboard'
                 return JsonResponse({'success': True, 'message': '登录成功', 'redirect_url': redirect_url})
             if user.profile.role == 'supplier':
                 return redirect('delivery_list')
+            if user.profile.role == 'subcontractor':
+                return redirect('measurement_list')
             return redirect('dashboard')
 
         increment_login_attempts(username, ip_address)

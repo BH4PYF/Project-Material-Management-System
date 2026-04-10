@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}创建进度计量{% endblock %}
+{% block page_title %}创建进度计量{% endblock %}
+{% block content %}
+<style>
+    .measurement-item-table th,
+    .measurement-item-table td {
+        vertical-align: middle;
+    }
+    .measurement-item-table input {
+        width: 100%;
+    }
+</style>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" action="{% url 'measurement_create' %}">
+            {% csrf_token %}
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">合同名称 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <select class="form-select" name="contract" id="contractSelect" required>
+                        <option value="">请选择合同</option>
+                        {% for c in contracts %}
+                        <option value="{{ c.pk }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">计量周期开始 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <input type="date" class="form-control" name="period_start" required>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <label class="col-sm-2 col-form-label">计量周期结束 <span class="text-danger">*</span></label>
+                <div class="col-sm-10">
+                    <input type="date" class="form-control" name="period_end" required>
+                </div>
+            </div>
+            
+            <h6 class="mb-3">计量清单</h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-hover measurement-item-table" id="measurementItemTable">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>清单名称</th>
+                            <th>分类</th>
+                            <th>施工参数</th>
+                            <th>计量单位</th>
+                            <th>合同工程量</th>
+                            <th>之前累计工程量</th>
+                            <th>本期工程量 <span class="text-danger">*</span></th>
+                            <th>累计工程量</th>
+                            <th>单价</th>
+                            <th>本期产值</th>
+                            <th>累计产值</th>
+                        </tr>
+                    </thead>
+                    <tbody id="measurementItemTbody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-sm-10 offset-sm-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> 保存</button>
+                    <a href="{% url 'measurement_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let contractItems = [];
+        let previousQuantities = {};
+        
+        document.getElementById('contractSelect').addEventListener('change', function() {
+            const contractId = this.value;
+            if (contractId) {
+                fetch(`/api/subcontract-lists-by-contract/?contract_id=${contractId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        contractItems = data.items || [];
+                        
+                        fetch(`/api/measurements-by-contract/?contract_id=${contractId}`)
+                            .then(response => response.json())
+                            .then(measurementData => {
+                                previousQuantities = {};
+                                if (measurementData.items && measurementData.items.length > 0) {
+                                    measurementData.items.forEach(item => {
+                                        previousQuantities[item.subcontract_list_id] = item.cumulative_quantity;
+                                    });
+                                }
+                                renderMeasurementItems();
+                            })
+                            .catch(error => {
+                                console.error('加载进度计量失败:', error);
+                                previousQuantities = {};
+                                renderMeasurementItems();
+                            });
+                    })
+                    .catch(error => {
+                        console.error('加载分包清单失败:', error);
+                    });
+            } else {
+                contractItems = [];
+                previousQuantities = {};
+                renderMeasurementItems();
+            }
+        });
+        
+        function renderMeasurementItems() {
+            const tbody = document.getElementById('measurementItemTbody');
+            tbody.innerHTML = '';
+            
+            contractItems.forEach((item, index) => {
+                const prevQty = previousQuantities[item.id] || 0;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="number" class="form-control form-control-sm" name="item_order" value="${index + 1}" readonly></td>
+                    <td>
+                        <input type="hidden" name="subcontract_list" value="${item.id}">
+                        <span>${item.name}</span>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.category || ''}" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.construction_params || ''}" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.unit || ''}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="contract_quantity" value="${item.quantity || 0}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm previous-quantity-input" name="previous_quantity" value="${prevQty}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm current-quantity-input" name="current_quantity" required></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm cumulative-quantity-input" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="unit_price" value="${item.unit_price || 0}" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm current-value-input" readonly></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm cumulative-value-input" readonly></td>
+                `;
+                tbody.appendChild(tr);
+                
+                if (prevQty > 0) {
+                    calculateValues(tr);
+                }
+            });
+            
+            addEventListenersToRows();
+        }
+        
+        function addEventListenersToRows() {
+            document.querySelectorAll('.current-quantity-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const row = this.closest('tr');
+                    calculateValues(row);
+                });
+            });
+        }
+        
+        function calculateValues(row) {
+            const previousQuantity = parseFloat(row.querySelector('.previous-quantity-input').value) || 0;
+            const currentQuantity = parseFloat(row.querySelector('.current-quantity-input').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('input[name="unit_price"]').value) || 0;
+            
+            const cumulativeQuantity = previousQuantity + currentQuantity;
+            const currentValue = currentQuantity * unitPrice;
+            const cumulativeValue = cumulativeQuantity * unitPrice;
+            
+            row.querySelector('.cumulative-quantity-input').value = cumulativeQuantity.toFixed(2);
+            row.querySelector('.current-value-input').value = currentValue.toFixed(2);
+            row.querySelector('.cumulative-value-input').value = cumulativeValue.toFixed(2);
+        }
+    });
+</script>
+{% endblock %}

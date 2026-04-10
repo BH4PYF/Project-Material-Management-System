@@ -60,44 +60,41 @@
     <h5><i class="bi bi-box-arrow-in-down"></i> 入库管理</h5>
     <div>
         <button class="btn btn-sm btn-outline-primary me-2" onclick="openColumnEditor()"><i class="bi bi-columns"></i> 编辑列</button>
-        <a href="{% url 'export_excel' %}?type=inbound&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&project={{ project_id|default:''|urlencode }}&material={{ material_id|default:''|urlencode }}&supplier={{ supplier_id|default:''|urlencode }}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
+        <a href="{% url 'export_excel' %}?type=inbound&date_from={{ date_from|default:''|urlencode }}&date_to={{ date_to|default:''|urlencode }}&project={{ selected_project|default:''|urlencode }}&material={{ selected_material|default:''|urlencode }}&supplier={{ selected_supplier|default:''|urlencode }}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 批量导出</a>
         {% if request.user.profile.is_admin or request.user.profile.is_management %}        {% endif %}
     </div>
 </div>
 <div class="filter-bar">
 
-    <form method="get" class="row g-2 align-items-end">
-        <!-- 第一行：日期选择 -->
+    <form method="get" class="row g-2 align-items-end" id="filterForm">
         <div class="col-auto"><label class="form-label small mb-0">起始日期</label><input type="date" class="form-control form-control-sm" name="date_from" value="{{ date_from }}"></div>
         <div class="col-auto"><label class="form-label small mb-0">截止日期</label><input type="date" class="form-control form-control-sm" name="date_to" value="{{ date_to }}"></div>
-        <div class="col-auto ms-auto mt-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button></div>
-        
-        <!-- 第二行：项目、材料、供应商筛选 -->
-        <div class="w-100"></div>
         <div class="col-auto">
-            <label class="form-label small mb-0">项目选择</label>
-            <select class="form-select form-select-sm" name="project"><option value="">全部</option>{% for p in projects %}<option value="{{ p.id }}" {% if project_id == p.id|stringformat:"d" %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>{% endfor %}</select>
+            <select class="form-select form-select-sm" name="project" id="filterProject">
+                <option value="">全部项目</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if selected_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="col-auto">
-            <label class="form-label small mb-0">项目搜索</label>
-            <input type="text" class="form-control form-control-sm" name="project_search" value="{{ project_search }}" placeholder="项目名称/编号">
+            <select class="form-select form-select-sm" name="material" id="filterMaterial">
+                <option value="">全部材料</option>
+                {% for m in materials %}
+                <option value="{{ m.id }}" {% if selected_material == m.id|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="col-auto">
-            <label class="form-label small mb-0">材料选择</label>
-            <select class="form-select form-select-sm" name="material"><option value="">全部</option>{% for m in materials %}<option value="{{ m.id }}" {% if material_id == m.id|stringformat:"d" %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
+            <select class="form-select form-select-sm" name="supplier" id="filterSupplier">
+                <option value="">全部供应商</option>
+                {% for s in suppliers %}
+                <option value="{{ s.id }}" {% if selected_supplier == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <div class="col-auto">
-            <label class="form-label small mb-0">材料搜索</label>
-            <input type="text" class="form-control form-control-sm" name="material_search" value="{{ material_search }}" placeholder="材料名称/规格">
-        </div>
-        <div class="col-auto">
-            <label class="form-label small mb-0">供应商选择</label>
-            <select class="form-select form-select-sm" name="supplier"><option value="">全部</option>{% for s in suppliers %}<option value="{{ s.id }}" {% if supplier_id == s.id|stringformat:"d" %}selected{% endif %}>{{ s.code }} - {{ s.name }}</option>{% endfor %}</select>
-        </div>
-        <div class="col-auto">
-            <label class="form-label small mb-0">供应商搜索</label>
-            <input type="text" class="form-control form-control-sm" name="supplier_search" value="{{ supplier_search }}" placeholder="供应商名称/联系人">
-        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 筛选</button></div>
+        <div class="col-auto"><a href="{% url 'inbound_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> 重置</a></div>
     </form>
 </div>
 <div class="card shadow-sm">
@@ -675,5 +672,71 @@ function getColumnIdFromClass(cellClass) {
 document.addEventListener('DOMContentLoaded', function() {
     applyColumnConfig();
 });
+
+function initSearchableSelect(selectId) {
+    var select = document.getElementById(selectId);
+    if (!select) return;
+    var wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.display = 'inline-block';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = select.options[0].text;
+    input.style.width = '180px';
+    wrapper.appendChild(input);
+    var dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-menu';
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;z-index:1000;max-height:200px;overflow-y:auto;width:100%;';
+    wrapper.appendChild(dropdown);
+    var currentVal = select.value;
+    if (currentVal) {
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value == currentVal) {
+                input.value = select.options[i].text;
+                break;
+            }
+        }
+    }
+    function renderOptions(filter) {
+        dropdown.innerHTML = '';
+        var f = (filter || '').toLowerCase();
+        for (var i = 0; i < select.options.length; i++) {
+            var opt = select.options[i];
+            if (!opt.value) continue;
+            if (f && opt.text.toLowerCase().indexOf(f) === -1) continue;
+            var item = document.createElement('a');
+            item.className = 'dropdown-item';
+            item.href = '#';
+            item.textContent = opt.text;
+            item.setAttribute('data-value', opt.value);
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                select.value = this.getAttribute('data-value');
+                input.value = this.textContent;
+                dropdown.classList.remove('show');
+            });
+            dropdown.appendChild(item);
+        }
+        if (dropdown.children.length === 0) {
+            var empty = document.createElement('span');
+            empty.className = 'dropdown-item text-muted';
+            empty.textContent = '无匹配项';
+            dropdown.appendChild(empty);
+        }
+        dropdown.classList.add('show');
+    }
+    input.addEventListener('focus', function() { renderOptions(this.value); });
+    input.addEventListener('input', function() { renderOptions(this.value); });
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) dropdown.classList.remove('show');
+    });
+}
+initSearchableSelect('filterProject');
+initSearchableSelect('filterMaterial');
+initSearchableSelect('filterSupplier');
 </script>
 {% endblock %}

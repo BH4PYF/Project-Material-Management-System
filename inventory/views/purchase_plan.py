@@ -6,7 +6,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.core.paginator import Paginator
 from django.utils import timezone
 
-from ..models import Project, Material, PurchasePlan, Supplier
+from ..models import Project, Material, PurchasePlan, Supplier, MaterialPlan
 from .utils import (
     purchase_plan_required, role_required,
     log_operation, generate_no,
@@ -38,12 +38,14 @@ def purchase_plan_list(request):
     projects = Project.objects.all()
     materials = Material.objects.select_related('category').all()
     suppliers = Supplier.objects.all()
+    material_plans = MaterialPlan.objects.select_related('project').all()
 
     return render(request, 'inventory/purchase_plan_list.html', {
         'plans': page_obj,
         'projects': projects,
         'materials': materials,
         'suppliers': suppliers,
+        'material_plans': material_plans,
         'status': status,
         'project_id': project_id,
         'q': q,
@@ -79,6 +81,7 @@ def purchase_plan_save(request):
 
         project_id = request.POST.get('project_id')
         material_id = request.POST.get('material_id')
+        material_plan_id = request.POST.get('material_plan_id', '').strip()
         supplier_id = request.POST.get('supplier_id', '').strip()
         err = validate_required_fields(request.POST, {
             'project_id': '请选择所属项目',
@@ -91,6 +94,7 @@ def purchase_plan_save(request):
             return JsonResponse({'error': err}, status=400)
         obj.project_id = project_id
         obj.material_id = material_id
+        obj.material_plan_id = material_plan_id if material_plan_id else None
         obj.supplier_id = supplier_id
         obj.spec = request.POST.get('spec', '').strip()
         quantity, err = parse_positive_decimal(request.POST.get('quantity'), '采购数量')
@@ -225,6 +229,7 @@ def purchase_plan_detail_api(request, pk):
         'no': obj.no,
         'project_id': obj.project_id,
         'material_id': obj.material_id,
+        'material_plan_id': obj.material_plan_id,
         'supplier_id': obj.supplier_id,
         'spec': obj.spec,
         'quantity': str(obj.quantity),

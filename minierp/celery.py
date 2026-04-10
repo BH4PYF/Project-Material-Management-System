@@ -4,10 +4,10 @@ from celery import Celery
 from django.conf import settings
 
 # 设置Django设置模块
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'material_system.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'minierp.settings')
 
 # 创建Celery实例
-app = Celery('material_system')
+app = Celery('minierp')
 
 # 使用Django设置配置Celery
 app.config_from_object('django.conf:settings', namespace='CELERY')

@@ -118,16 +118,47 @@ def add_custom_category(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         remark = request.POST.get('remark', '').strip()
+        category_type = request.POST.get('category_type', 'material')  # material 或 subcontract
         if name:
-            if Category.objects.filter(name=name).exists():
-                return JsonResponse({'error': f'分类名称「{name}」已存在'}, status=400)
-            try:
-                code = generate_code('CAT', Category)
-                Category.objects.create(code=code, name=name, remark=remark)
-                log_operation(request.user, '材料分类', 'create', f'新增自定义分类 {code} {name}', code)
-                return JsonResponse({'success': True, 'message': '自定义分类添加成功'})
-            except IntegrityError:
-                return JsonResponse({'error': '分类编码冲突，请重试'}, status=400)
+            if category_type == 'material':
+                if Category.objects.filter(name=name).exists():
+                    return JsonResponse({'error': f'材料分类名称「{name}」已存在'}, status=400)
+                try:
+                    code = generate_code('CAT', Category)
+                    Category.objects.create(code=code, name=name, remark=remark)
+                    log_operation(request.user, '材料分类', 'create', f'新增自定义分类 {code} {name}', code)
+                    return JsonResponse({'success': True, 'message': '材料分类添加成功'})
+                except IntegrityError:
+                    return JsonResponse({'error': '分类编码冲突，请重试'}, status=400)
+            else:
+                from ..models import SubcontractCategory
+                if SubcontractCategory.objects.filter(category_name=name).exists():
+                    return JsonResponse({'error': f'清单分类名称「{name}」已存在'}, status=400)
+                try:
+                    # 生成清单分类编号，格式为 BAT0001
+                    last_list = SubcontractCategory.objects.filter(category_code__startswith='BAT').order_by('-category_code').first()
+                    if last_list:
+                        try:
+                            last_num = int(last_list.category_code[3:])
+                            new_num = last_num + 1
+                        except (ValueError, IndexError):
+                            new_num = 1
+                    else:
+                        new_num = 1
+                    category_code = f"BAT{new_num:04d}"
+                    # 确保编码唯一
+                    while SubcontractCategory.objects.filter(category_code=category_code).exists():
+                        new_num += 1
+                        category_code = f"BAT{new_num:04d}"
+                    SubcontractCategory.objects.create(
+                        category_code=category_code,
+                        category_name=name,
+                        remark='用户自定义创建'
+                    )
+                    log_operation(request.user, '清单分类', 'create', f'新增自定义清单分类 {category_code} {name}', category_code)
+                    return JsonResponse({'success': True, 'message': '清单分类添加成功'})
+                except IntegrityError:
+                    return JsonResponse({'error': '分类编码冲突，请重试'}, status=400)
         else:
             return JsonResponse({'error': '分类名称不能为空'}, status=400)
     return redirect('settings_page')
@@ -143,6 +174,20 @@ def delete_category(request, pk):
     name = obj.name
     obj.delete()
     log_operation(request.user, '材料分类', 'delete', f'删除分类 {code} {name}', code)
+    return JsonResponse({'success': True})
+
+
+@admin_required
+@require_POST
+def delete_subcontract_category(request, pk):
+    from ..models import SubcontractCategory
+    obj = get_object_or_404(SubcontractCategory, pk=pk)
+    # 检查是否有使用该清单分类的记录
+    # 这里可以添加检查逻辑，比如检查是否有SubcontractList使用了这个分类
+    category_code = obj.category_code
+    category_name = obj.category_name
+    obj.delete()
+    log_operation(request.user, '清单分类', 'delete', f'删除清单分类 {category_code} {category_name}', category_code)
     return JsonResponse({'success': True})
 
 
@@ -213,6 +258,7 @@ def save_login_security_settings(request):
 @admin_required
 def user_list(request):
     from django.contrib.auth.models import Group
+    from ..models import Subcontractor
     # 使用 prefetch_related 来减少数据库查询，按id排序
     users = User.objects.select_related('profile').prefetch_related('groups').order_by('id')
     # 获取所有Django用户组
@@ -229,7 +275,11 @@ def user_list(request):
         if role_code != 'admin':
             role_list.append({'code': role_code, 'name': role_name})
     
-    return render(request, 'inventory/user_list.html', {'users': users, 'role_list': role_list})
+    subcontractors = Subcontractor.objects.all()
+    
+    return render(request, 'inventory/user_list.html', {
+        'users': users, 'role_list': role_list, 'subcontractors': subcontractors
+    })
 
 
 @admin_required
@@ -328,6 +378,18 @@ def user_save(request):
                 user.profile.phone = request.POST.get('phone', '')
                 user.profile.save()
                 
+                # 处理分包商关联
+                from ..models import Subcontractor
+                user.profile.subcontractors.clear()
+                if role == 'subcontractor':
+                    subcontractor_id = request.POST.get('subcontractor_id', '')
+                    if subcontractor_id:
+                        try:
+                            sub = Subcontractor.objects.get(pk=subcontractor_id)
+                            user.profile.subcontractors.add(sub)
+                        except Subcontractor.DoesNotExist:
+                            pass
+                
                 # 同步权限
                 user.profile.sync_group_permissions()
             
@@ -370,6 +432,12 @@ def user_detail_api(request, pk):
     # 始终返回用户的实际角色，而不是用户组信息
     role = user.profile.role if hasattr(user, 'profile') else 'clerk'
     
+    subcontractor_id = ''
+    if hasattr(user, 'profile') and role == 'subcontractor':
+        sub = user.profile.subcontractors.first()
+        if sub:
+            subcontractor_id = str(sub.id)
+    
     data = {
         'id': user.pk,
         'username': user.username,
@@ -380,6 +448,7 @@ def user_detail_api(request, pk):
         'is_superuser': user.is_superuser,
         'role': role,
         'phone': user.profile.phone if hasattr(user, 'profile') else '',
+        'subcontractor_id': subcontractor_id,
     }
     return JsonResponse(data)
 
@@ -649,6 +718,81 @@ def restore_data(request):
 
 
 @admin_required
+@require_GET
+def subcontract_category_list_api(request):
+    """清单分类列表API"""
+    from ..models import SubcontractCategory
+    categories = SubcontractCategory.objects.all().order_by('category_code')
+    data = []
+    for cat in categories:
+        data.append({
+            'id': cat.pk,
+            'code': cat.category_code,
+            'name': cat.category_name
+        })
+    return JsonResponse(data, safe=False)
+
+
+@admin_required
+@require_POST
+def init_subcontract_categories(request):
+    """一键初始化清单分类"""
+    if request.method == 'POST':
+        try:
+            from ..models import SubcontractCategory
+            # 定义主要清单分类
+            categories = [
+                {'category_code': 'BAT0001', 'category_name': '基础工程'},
+                {'category_code': 'BAT0002', 'category_name': '房屋建筑'},
+                {'category_code': 'BAT0003', 'category_name': '市政工程'},
+                {'category_code': 'BAT0004', 'category_name': '特种加固'},
+                {'category_code': 'BAT0005', 'category_name': '装饰装修'},
+            ]
+            
+            created_count = 0
+            skipped_count = 0
+            
+            with transaction.atomic():
+                for cat_data in categories:
+                    # 检查是否已存在同编号的清单分类（包括软删除的）
+                    existing_cat = SubcontractCategory.all_objects.filter(category_code=cat_data['category_code']).first()
+                    if existing_cat:
+                        if existing_cat.is_deleted:
+                            # 恢复软删除的分类
+                            existing_cat.is_deleted = False
+                            existing_cat.save()
+                            created_count += 1
+                        else:
+                            # 跳过已存在的分类
+                            skipped_count += 1
+                        continue
+                    
+                    # 创建分类
+                    SubcontractCategory.objects.create(
+                        category_code=cat_data['category_code'],
+                        category_name=cat_data['category_name'],
+                        remark='系统初始化创建'
+                    )
+                    created_count += 1
+            
+            log_operation(request.user, '系统设置', 'create', 
+                         f'一键初始化清单分类：创建{created_count}个，跳过{skipped_count}个')
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'清单分类初始化完成：创建{created_count}个，跳过{skipped_count}个（已存在）'
+            })
+            
+        except (IntegrityError, DatabaseError) as e:
+            logger.exception('初始化清单分类失败：数据库操作异常')
+            return JsonResponse({'error': '初始化失败：数据库操作异常'}, status=500)
+        except Exception as e:
+            logger.exception('初始化清单分类失败：未知错误')
+            return JsonResponse({'error': '初始化失败：系统异常，请重试'}, status=500)
+    return JsonResponse({'error': '无效请求'}, status=400)
+
+
+@admin_required
 @require_POST
 def clear_all_data(request):
     """一键清空所有数据"""
@@ -677,7 +821,10 @@ def clear_all_data(request):
                 Project.all_objects.all().hard_delete()
                 # 8. 删除分类
                 Category.all_objects.all().hard_delete()
-                # 9. 保留用户数据和角色信息，只清除其他扩展信息
+                # 9. 删除清单分类
+                from ..models import SubcontractList
+                SubcontractList.all_objects.all().hard_delete()
+                # 10. 保留用户数据和角色信息，只清除其他扩展信息
                 # 保存当前用户的角色信息
                 current_user_id = request.user.id
                 profiles_data = []

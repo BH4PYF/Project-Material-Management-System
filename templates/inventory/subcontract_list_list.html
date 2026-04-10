@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}分包清单{% endblock %}
+{% block page_title %}分包清单{% endblock %}
+{% block content %}
+<style>
+    /* 分包清单列表列宽优化 */
+    .table-subcontract-list th:nth-child(1),  /* 清单编号 */
+    .table-subcontract-list td:nth-child(1) {
+        width: 90px;
+        min-width: 70px;
+    }
+    .table-subcontract-list th:nth-child(2),  /* 清单名称 */
+    .table-subcontract-list td:nth-child(2) {
+        width: 250px;
+        min-width: 200px;
+        max-width: 300px;
+    }
+    .table-subcontract-list th:nth-child(3),  /* 分类 */
+    .table-subcontract-list td:nth-child(3) {
+        width: 120px;
+        min-width: 100px;
+    }
+    .table-subcontract-list th:nth-child(4),  /* 施工参数 */
+    .table-subcontract-list td:nth-child(4) {
+        width: 180px;
+        min-width: 150px;
+    }
+    .table-subcontract-list th:nth-child(5),  /* 计量单位 */
+    .table-subcontract-list td:nth-child(5) {
+        width: 80px;
+        min-width: 60px;
+        text-align: center;
+    }
+    .table-subcontract-list th:nth-child(6),  /* 参考单价 */
+    .table-subcontract-list td:nth-child(6) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-subcontract-list th:nth-child(7),  /* 累计完成量 */
+    .table-subcontract-list td:nth-child(7) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-subcontract-list th:nth-child(8),  /* 平均单价 */
+    .table-subcontract-list td:nth-child(8) {
+        width: 100px;
+        min-width: 80px;
+        text-align: right;
+    }
+    .table-subcontract-list th:nth-child(9),  /* 操作 */
+    .table-subcontract-list td:nth-child(9) {
+        width: 140px;
+        min-width: 120px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式优化 */
+    .table-subcontract-list td:nth-child(9) .btn {
+        margin-right: 4px;
+    }
+    .table-subcontract-list td:nth-child(9) .btn:last-child {
+        margin-right: 0;
+    }
+    
+    /* 创建按钮宽度调整 */
+    .table-subcontract-list tr:first-child td:nth-child(9) .btn {
+        min-width: 70px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    
+    /* 创建按钮居中显示 */
+    .table-subcontract-list tr:first-child td:nth-child(9) {
+        text-align: center;
+    }
+</style>
+<div class="page-header">
+    <h5><i class="bi bi-list-check"></i> 分包清单</h5>
+    <div>
+        <a href="{% url 'export_subcontract_lists' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> 导出Excel</a>
+    </div>
+</div>
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto"><input type="text" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="搜索清单名称"></div>
+        <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> 查询</button></div>
+    </form>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0 table-subcontract-list">
+            <thead><tr><th>清单编号</th><th>清单名称 <span class="text-danger">*</span></th><th>分类 <span class="text-danger">*</span></th><th>施工参数 <span class="text-danger">*</span></th><th>计量单位 <span class="text-danger">*</span></th><th>参考单价 <span class="text-danger">*</span></th><th>累计完成量</th><th>平均单价</th><th>操作</th></tr></thead>
+            <tbody>
+            <!-- 新增行 -->
+            <form method="post" action="{% url 'subcontract_list_create' %}" class="d-contents">
+                {% csrf_token %}
+                <tr class="table-light">
+                    <td><small class="text-muted">(自动生成)</small></td>
+                    <td><input type="text" class="form-control form-control-sm" name="name" placeholder="清单名称" required></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="category" required>
+                            <option value="">请选择分类</option>
+                            {% for category in categories %}
+                            <option value="{{ category.category_name }}">{{ category.category_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm" name="construction_params" placeholder="施工参数" required></td>
+                    <td><input type="text" class="form-control form-control-sm" name="unit" placeholder="计量单位" required></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm" name="reference_price" placeholder="参考单价" required></td>
+                    <td><small class="text-muted">-</small></td>
+                    <td><small class="text-muted">-</small></td>
+                    <td><button type="submit" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> 创建</button></td>
+                </tr>
+            </form>
+            {% for sl in subcontract_lists %}
+            <tr>
+                <td>{{ sl.code }}</td><td>{{ sl.name }}</td><td>{{ sl.category }}</td><td>{{ sl.construction_params }}</td>
+                <td class="text-center">{{ sl.unit }}</td>
+                <td class="text-right">{{ sl.reference_price|floatformat:2 }}</td>
+                <td class="text-right">{{ sl.get_total_completed_quantity|floatformat:2 }}</td>
+                <td class="text-right">{{ sl.get_average_price|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'subcontract_list_edit' sl.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteItem({{ sl.pk }}, '{{ sl.name }}', 'subcontract_list')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center py-5">
+                    <i class="bi bi-list-check fs-1 text-muted d-block mb-3"></i>
+                    <h6 class="text-muted">暂无分包清单数据</h6>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除 <strong id="deleteItemName"></strong> 吗？</p>
+                <p class="text-danger">此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function deleteItem(pk, name, type) {
+    document.getElementById('deleteItemName').textContent = name;
+    var urlMap = {
+        'subcontractor': '/subcontractors/' + pk + '/delete/',
+        'subcontract_list': '/subcontract-lists/' + pk + '/delete/',
+        'contract': '/contracts/' + pk + '/delete/',
+        'budget': '/budgets/' + pk + '/delete/',
+        'material_plan': '/material-plans/' + pk + '/delete/'
+    };
+    document.getElementById('deleteForm').action = urlMap[type];
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}
